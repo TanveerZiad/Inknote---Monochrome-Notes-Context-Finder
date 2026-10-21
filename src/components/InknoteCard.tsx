@@ -1,4 +1,4 @@
-import React, { useState, useRef, memo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, memo, useCallback, useEffect, useMemo } from 'react';
 import {
   Folder,
   Pin,
@@ -15,6 +15,7 @@ import {
   Heading1,
   List,
   CheckSquare,
+  Square,
   Check,
   Bold,
   Italic,
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react';
 import { NoteItem, FolderItem } from '../types/workspace';
 import { RichTextEditor, RichTextEditorHandle } from './RichTextEditor';
-import { formatDate } from '../utils/searchEngine';
+import { formatDate, getChecklistProgress } from '../utils/searchEngine';
 
 interface InknoteCardProps {
   note: NoteItem;
@@ -112,15 +113,22 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
   const currentContent = isUnlocked && unlockedPayload ? unlockedPayload.content : note.content;
   const currentTags = isUnlocked && unlockedPayload ? unlockedPayload.tags : note.tags ?? [];
 
+  const checklistProgress = useMemo(
+    () => getChecklistProgress(currentContent),
+    [currentContent]
+  );
+
   const handleToggleChecklist = useCallback(
     (lineIndex: number) => {
       const lines = currentContent.split('\n');
-      if (lines[lineIndex].startsWith('- [x]')) {
-        lines[lineIndex] = lines[lineIndex].replace('- [x]', '- [ ]');
-      } else if (lines[lineIndex].startsWith('- [ ]')) {
-        lines[lineIndex] = lines[lineIndex].replace('- [ ]', '- [x]');
+      const targetLine = lines[lineIndex];
+      if (targetLine === undefined) return;
+      const match = targetLine.match(/^(\s*[-*+]\s*\[)([ xX])(\]\s*.*)$/);
+      if (match) {
+        const isChecked = match[2].toLowerCase() === 'x';
+        lines[lineIndex] = `${match[1]}${isChecked ? ' ' : 'x'}${match[3]}`;
+        onUpdate(note.id, { content: lines.join('\n') });
       }
-      onUpdate(note.id, { content: lines.join('\n') });
     },
     [currentContent, note.id, onUpdate]
   );
@@ -195,6 +203,33 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
             <Folder size={12} />
             {folder?.name}
           </span>
+          {checklistProgress && (
+            <button
+              type="button"
+              className={`card-task-badge ${
+                checklistProgress.completed === checklistProgress.total ? 'is-complete' : ''
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPreviewing((prev) => !prev);
+              }}
+              title={`${checklistProgress.completed} of ${checklistProgress.total} tasks completed (${checklistProgress.percent}%). Click to ${
+                isPreviewing ? 'edit note' : 'preview checklist'
+              }`}
+            >
+              <CheckSquare
+                size={11}
+                className={
+                  checklistProgress.completed === checklistProgress.total
+                    ? 'text-emerald-500'
+                    : 'text-muted'
+                }
+              />
+              <span>
+                {checklistProgress.completed}/{checklistProgress.total}
+              </span>
+            </button>
+          )}
           {note.inContext !== false && (
             <span
               className="card-status-dot"
@@ -425,31 +460,39 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
           <div className="card-editor-area no-scrollbar">
             {isPreviewing ? (
               <div className="card-markdown-preview no-scrollbar">
-                {currentContent.split('\n').map((line, lineIndex) =>
-                  line.startsWith('- [') ? (
-                    <button
-                      key={`${line}-${lineIndex}`}
-                      className={`checkline ${
-                        line.startsWith('- [x]') ? 'is-complete' : ''
-                      }`}
-                      onClick={() => handleToggleChecklist(lineIndex)}
-                    >
-                      {line.startsWith('- [x]') ? (
-                        <CheckSquare size={14} />
-                      ) : (
-                        <Check size={14} className="opacity-40" />
-                      )}
-                      <span>{line.slice(6)}</span>
-                    </button>
-                  ) : (
+                {currentContent.split('\n').map((line, lineIndex) => {
+                  const match = line.match(/^(\s*[-*+]\s*\[)([ xX])(\]\s*)(.*)$/);
+                  if (match) {
+                    const isCompleted = match[2].toLowerCase() === 'x';
+                    const text = match[4];
+                    return (
+                      <button
+                        key={`checklist-${lineIndex}`}
+                        type="button"
+                        className={`checkline ${isCompleted ? 'is-complete' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleChecklist(lineIndex);
+                        }}
+                      >
+                        {isCompleted ? (
+                          <CheckSquare size={14} className="text-emerald-500" />
+                        ) : (
+                          <Square size={14} className="opacity-40" />
+                        )}
+                        <span>{text}</span>
+                      </button>
+                    );
+                  }
+                  return (
                     <p
-                      key={`${line}-${lineIndex}`}
+                      key={`text-${lineIndex}`}
                       className={line.startsWith('#') ? 'headingline' : ''}
                     >
                       {line}
                     </p>
-                  )
-                )}
+                  );
+                })}
               </div>
             ) : (
               <>

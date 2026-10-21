@@ -84,3 +84,17 @@ export function makeId(prefix: string): string {
       : `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   return `${prefix}-${value}`;
 }
+
+export function getChecklistProgress(content: string): {
+  total: number;
+  completed: number;
+  percent: number;
+} | null {
+  if (!content) return null;
+  const matches = content.match(/^\s*[-*+]\s*\[([ xX])\]/gm);
+  if (!matches || matches.length === 0) return null;
+  const total = matches.length;
+  const completed = matches.filter((m) => /\[[xX]\]/.test(m)).length;
+  const percent = Math.round((completed / total) * 100);
+  return { total, completed, percent };
+}

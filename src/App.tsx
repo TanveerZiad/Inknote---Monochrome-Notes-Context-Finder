@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, Network, FileText, Plus } from 'lucide-react';
+import { Sparkles, Network, FileText, Plus, CheckSquare } from 'lucide-react';
 
 // Types
 import { NoteItem, NoteRevision } from './types/workspace';
@@ -351,12 +351,22 @@ export default function App() {
                   />
                 );
               })
+            ) : showTasksOnly ? (
+              <div className="empty-state">
+                <CheckSquare size={32} className="text-emerald-500" />
+                <strong>All tasks completed!</strong>
+                <p>You have finished all actionable checklist items. Create a new task list or switch folders.</p>
+                <button className="btn-primary" onClick={() => createNote()}>
+                  <Plus size={16} />
+                  <span>Create task note</span>
+                </button>
+              </div>
             ) : (
               <div className="empty-state">
                 <FileText size={32} className="text-muted" />
                 <strong>No notes in this folder</strong>
                 <p>Create your first thought or choose another folder from the sidebar.</p>
-                <button className="btn-primary" onClick={createNote}>
+                <button className="btn-primary" onClick={() => createNote()}>
                   <Plus size={16} />
                   <span>Create note</span>
                 </button>

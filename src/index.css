@@ -710,6 +710,45 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   gap: 4px;
 }
 
+.card-task-badge {
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  transition: all 0.2s ease;
+  user-select: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.card-task-badge:hover {
+  background: var(--border-subtle);
+  color: var(--text-main);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.dark .card-task-badge:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.card-task-badge.is-complete {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.card-task-badge.is-complete:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
 .card-status-dot {
   width: 6px;
   height: 6px;

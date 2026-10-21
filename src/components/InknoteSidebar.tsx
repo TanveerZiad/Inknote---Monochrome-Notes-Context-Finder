@@ -75,7 +75,7 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
     setIsComposerOpen(false);
   };
 
-  const actionableCount = allNotes.filter((n) => /- \[ \]/.test(n.content)).length;
+  const actionableCount = allNotes.filter((n) => /^\s*[-*+]\s*\[ \]/m.test(n.content)).length;
 
   return (
     <aside className={`inknote-sidebar ${isOpen ? '' : 'is-collapsed'}`}>

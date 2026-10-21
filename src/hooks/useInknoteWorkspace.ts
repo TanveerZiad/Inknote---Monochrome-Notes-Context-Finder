@@ -124,7 +124,8 @@ export function useInknoteWorkspace(
         : workspace.notes.filter((note) => note.folderId === activeFolderId);
 
     if (showTasksOnly) {
-      list = list.filter((note) => /- \[ \]/.test(note.content));
+      // Smart Auto-Graduation: only display notes with at least one unfinished task
+      list = list.filter((note) => /^\s*[-*+]\s*\[ \]/m.test(note.content));
     }
     if (tagFilter) {
       list = list.filter((note) => (note.tags ?? []).includes(tagFilter));
@@ -251,23 +252,38 @@ export function useInknoteWorkspace(
   );
 
   // Note Operations
-  const createNote = useCallback(() => {
-    const folderId = activeFolderId === 'all' ? folders[0]?.id : activeFolderId;
-    if (!folderId) return;
-    const now = new Date().toISOString();
-    const note: NoteItem = {
-      id: makeId('note'),
-      folderId,
-      title: 'Untitled note',
-      content: '',
-      createdAt: now,
-      updatedAt: now,
-      priority: 0,
-    };
-    commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
-    setActiveFolderId(folderId);
-    setSelectedNoteId(note.id);
-  }, [activeFolderId, commitWorkspace, folders, workspace]);
+  const createNote = useCallback(
+    (customTemplate?: { title?: string; content?: string; tags?: string[] }) => {
+      const folderId =
+        activeFolderId === 'all' ? folders[0]?.id || 'inbox' : activeFolderId;
+      if (!folderId) return;
+      const now = new Date().toISOString();
+
+      const isTaskFocus = showTasksOnly;
+      const defaultTitle =
+        customTemplate?.title ?? (isTaskFocus ? 'Actionable tasks' : 'Untitled note');
+      const defaultContent =
+        customTemplate?.content ??
+        (isTaskFocus ? '- [ ] Task 1\n- [ ] Task 2\n- [ ] ' : '');
+      const defaultTags =
+        customTemplate?.tags ?? (isTaskFocus ? ['tasks'] : []);
+
+      const note: NoteItem = {
+        id: makeId('note'),
+        folderId,
+        title: defaultTitle,
+        content: defaultContent,
+        tags: defaultTags,
+        createdAt: now,
+        updatedAt: now,
+        priority: 0,
+      };
+      commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
+      setActiveFolderId(folderId);
+      setSelectedNoteId(note.id);
+    },
+    [activeFolderId, commitWorkspace, folders, showTasksOnly, workspace]
+  );
 
   const updateNote = useCallback(
     (
