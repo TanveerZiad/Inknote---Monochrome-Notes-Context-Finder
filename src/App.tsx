@@ -16,6 +16,7 @@ import {
   Folder,
   FolderPlus,
   GitBranch,
+  GripVertical,
   Hash,
   Heading1,
   History,
@@ -50,6 +51,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { RichTextEditor, RichTextEditorHandle } from './components/RichTextEditor';
 
 type FolderItem = { id: string; name: string; pinned: boolean; priority: number; parentId?: string };
 type NoteItem = {
@@ -289,7 +291,7 @@ export default function App() {
 
   const folderInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const noteTextareas = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const noteEditors = useRef<Record<string, RichTextEditorHandle | null>>({});
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
@@ -606,45 +608,7 @@ export default function App() {
     setHistory((items) => items.slice(0, -1));
   };
 
-  // Inline Formatting & Writing Tools
-  const applyInlineFormat = (note: NoteItem, before: string, after = before, placeholder = 'text') => {
-    const editor = noteTextareas.current[note.id];
-    const start = editor?.selectionStart ?? note.content.length;
-    const end = editor?.selectionEnd ?? start;
-    const selected = note.content.slice(start, end) || placeholder;
-    const content = `${note.content.slice(0, start)}${before}${selected}${after}${note.content.slice(end)}`;
-    updateNote(note.id, { content });
-    window.setTimeout(() => {
-      editor?.focus();
-      editor?.setSelectionRange(start + before.length, start + before.length + selected.length);
-    }, 0);
-  };
-
-  const toggleLinePrefix = (note: NoteItem, prefix: string) => {
-    const editor = noteTextareas.current[note.id];
-    const start = editor?.selectionStart ?? 0;
-    const end = editor?.selectionEnd ?? note.content.length;
-    const lineStart = note.content.lastIndexOf('\n', start - 1) + 1;
-    const lineEnd = note.content.indexOf('\n', end);
-    const segmentEnd = lineEnd < 0 ? note.content.length : lineEnd;
-    const segment = note.content.slice(lineStart, segmentEnd);
-    const lines = segment.split('\n');
-    const next = lines.every((line) => line.startsWith(prefix)) ? lines.map((line) => line.slice(prefix.length)).join('\n') : lines.map((line) => `${prefix}${line || 'Item'}`).join('\n');
-    updateNote(note.id, { content: `${note.content.slice(0, lineStart)}${next}${note.content.slice(segmentEnd)}` });
-    window.setTimeout(() => {
-      editor?.focus();
-      editor?.setSelectionRange(lineStart, lineStart + next.length);
-    }, 0);
-  };
-
-  const insertTable = (note: NoteItem) => applyInlineFormat(note, '\n| Column 1 | Column 2 |\n| --- | --- |\n| ', ' | value |\n', 'value');
-
-  const insertLink = (note: NoteItem) => {
-    const url = window.prompt('Paste a link URL');
-    if (!url) return;
-    applyInlineFormat(note, '[', `](${url})`, 'link text');
-  };
-
+  // Note checklist toggling
   const toggleChecklistItem = (note: NoteItem, lineIndex: number) => {
     const lines = note.content.split('\n');
     lines[lineIndex] = lines[lineIndex].startsWith('- [x]') ? lines[lineIndex].replace('- [x]', '- [ ]') : lines[lineIndex].replace('- [ ]', '- [x]');
@@ -671,10 +635,15 @@ export default function App() {
   };
 
   const insertMention = (targetNote: NoteItem, sourceNoteId: string) => {
-    const note = workspace.notes.find((n) => n.id === sourceNoteId);
-    if (!note) return;
-    const updated = note.content.replace(/@([^@\n]*)$/, `@${targetNote.title}`);
-    updateNote(sourceNoteId, { content: updated });
+    const editor = noteEditors.current[sourceNoteId];
+    if (editor) {
+      editor.insertText(`@${targetNote.title} `);
+    } else {
+      const note = workspace.notes.find((n) => n.id === sourceNoteId);
+      if (!note) return;
+      const updated = note.content.replace(/@([^@\n]*)$/, `@${targetNote.title}`);
+      updateNote(sourceNoteId, { content: updated });
+    }
     setMentionQuery('');
   };
 
@@ -1023,12 +992,6 @@ export default function App() {
                 return (
                   <article
                     key={note.id}
-                    draggable
-                    onDragStart={(e: DragEvent<HTMLElement>) => {
-                      e.stopPropagation();
-                      setDraggedNoteId(note.id);
-                    }}
-                    onDragEnd={() => setDraggedNoteId(null)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => reorderNote(note.id)}
                     className={`note-card note-size-${note.size ?? 'regular'} ${selectedNoteId === note.id ? 'is-selected' : ''}`}
@@ -1039,6 +1002,18 @@ export default function App() {
                     {/* Clean Minimalist Card Topbar */}
                     <div className="card-topbar">
                       <div className="card-badges">
+                        <div
+                          className="card-drag-handle"
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            setDraggedNoteId(note.id);
+                          }}
+                          onDragEnd={() => setDraggedNoteId(null)}
+                          title="Drag to reorder note"
+                        >
+                          <GripVertical size={13} />
+                        </div>
                         <span className="card-folder-badge">
                           <Folder size={12} />
                           {folder?.name}
@@ -1197,17 +1172,71 @@ export default function App() {
                         {/* Floating Format Capsule Bar */}
                         {isFormatting && (
                           <div className="floating-format-bar" onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => toggleLinePrefix(note, '# ')} title="Heading"><Heading1 size={13} /></button>
-                            <button onClick={() => toggleLinePrefix(note, '- ')} title="Bullet list"><List size={13} /></button>
-                            <button onClick={() => toggleLinePrefix(note, '- [ ] ')} title="Checklist"><CheckSquare size={13} /></button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('heading')}
+                              title="Heading"
+                            >
+                              <Heading1 size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('bullet')}
+                              title="Bullet list"
+                            >
+                              <List size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('checklist')}
+                              title="Checklist"
+                            >
+                              <CheckSquare size={13} />
+                            </button>
                             <i />
-                            <button onClick={() => applyInlineFormat(note, '**')} title="Bold"><Bold size={13} /></button>
-                            <button onClick={() => applyInlineFormat(note, '_')} title="Italic"><Italic size={13} /></button>
-                            <button onClick={() => applyInlineFormat(note, '~~')} title="Strikethrough"><Strikethrough size={13} /></button>
-                            <button onClick={() => insertLink(note)} title="Link"><Link2 size={13} /></button>
-                            <button onClick={() => insertTable(note)} title="Table"><Table2 size={13} /></button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('bold')}
+                              title="Bold"
+                            >
+                              <Bold size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('italic')}
+                              title="Italic"
+                            >
+                              <Italic size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('strikethrough')}
+                              title="Strikethrough"
+                            >
+                              <Strikethrough size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('link')}
+                              title="Link"
+                            >
+                              <Link2 size={13} />
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => noteEditors.current[note.id]?.applyFormat('table')}
+                              title="Table"
+                            >
+                              <Table2 size={13} />
+                            </button>
                             <i />
-                            <button onClick={() => setFormattingNoteId(null)} title="Close formatting bar"><X size={13} /></button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => setFormattingNoteId(null)}
+                              title="Close formatting bar"
+                            >
+                              <X size={13} />
+                            </button>
                           </div>
                         )}
 
@@ -1234,21 +1263,21 @@ export default function App() {
                             </div>
                           ) : (
                             <>
-                              <textarea
+                              <RichTextEditor
                                 ref={(el) => {
-                                  noteTextareas.current[note.id] = el;
+                                  noteEditors.current[note.id] = el;
                                 }}
-                                className="card-textarea"
-                                value={note.content}
-                                onFocus={() => setSelectedNoteId(note.id)}
-                                onChange={(e) => {
-                                  setSelectedNoteId(note.id);
-                                  updateNote(note.id, { content: e.target.value });
-                                  const before = e.target.value.slice(0, e.target.selectionStart);
-                                  const match = before.match(/@([^@\n]*)$/);
-                                  setMentionQuery(match?.[1] ?? '');
-                                }}
+                                content={note.content}
+                                noteId={note.id}
                                 placeholder="Start writing... Type @ to reference other notes."
+                                onFocus={() => setSelectedNoteId(note.id)}
+                                onChange={(newContent) => {
+                                  setSelectedNoteId(note.id);
+                                  updateNote(note.id, { content: newContent });
+                                }}
+                                onMentionQuery={(query) => {
+                                  setMentionQuery(query ?? '');
+                                }}
                               />
                               {selectedNoteId === note.id && mentionSuggestions.length > 0 && (
                                 <div className="search-popover" style={{ top: 'auto', bottom: '10px' }}>

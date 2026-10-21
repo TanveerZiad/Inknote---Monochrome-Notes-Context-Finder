@@ -73,8 +73,75 @@ export function applyMarkdownFormatting(
       break;
   }
 
-  // Toggle formatting if already wrapped
-  if (
+  // Check if selectedText itself includes formatting delimiters
+  if (selectedText) {
+    if (type === 'bold') {
+      const match = selectedText.match(/^(\*{2,}|_{2,})\s*(.*?)\s*(\*{2,}|_{2,})$/);
+      if (match) {
+        const unwrapped = match[2];
+        const newContent = value.slice(0, start) + unwrapped + value.slice(end);
+        return {
+          newContent,
+          newSelectionStart: start,
+          newSelectionEnd: start + unwrapped.length,
+        };
+      }
+    } else if (type === 'italic') {
+      const match = selectedText.match(/^(\*|_)\s*(.*?)\s*(\*|_)$/);
+      if (match && !match[2].startsWith('*') && !match[2].startsWith('_')) {
+        const unwrapped = match[2];
+        const newContent = value.slice(0, start) + unwrapped + value.slice(end);
+        return {
+          newContent,
+          newSelectionStart: start,
+          newSelectionEnd: start + unwrapped.length,
+        };
+      }
+    } else if (prefix && suffix && selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
+      const unwrapped = selectedText.slice(prefix.length, selectedText.length - suffix.length);
+      const newContent = value.slice(0, start) + unwrapped + value.slice(end);
+      return {
+        newContent,
+        newSelectionStart: start,
+        newSelectionEnd: start + unwrapped.length,
+      };
+    }
+  }
+
+  // Toggle formatting if already wrapped by delimiters
+  if (type === 'bold') {
+    const isAsteriskWrapped =
+      value.slice(start - 2, start) === '**' && value.slice(end, end + 2) === '**';
+    const isUnderscoreWrapped =
+      value.slice(start - 2, start) === '__' && value.slice(end, end + 2) === '__';
+    if (isAsteriskWrapped || isUnderscoreWrapped) {
+      const unformatted = value.slice(0, start - 2) + selectedText + value.slice(end + 2);
+      return {
+        newContent: unformatted,
+        newSelectionStart: start - 2,
+        newSelectionEnd: end - 2,
+      };
+    }
+  } else if (type === 'italic') {
+    const isAsteriskWrapped =
+      value.slice(start - 1, start) === '*' &&
+      value.slice(end, end + 1) === '*' &&
+      value.slice(start - 2, start) !== '**' &&
+      value.slice(end, end + 2) !== '**';
+    const isUnderscoreWrapped =
+      value.slice(start - 1, start) === '_' &&
+      value.slice(end, end + 1) === '_' &&
+      value.slice(start - 2, start) !== '__' &&
+      value.slice(end, end + 2) !== '__';
+    if (isAsteriskWrapped || isUnderscoreWrapped) {
+      const unformatted = value.slice(0, start - 1) + selectedText + value.slice(end + 1);
+      return {
+        newContent: unformatted,
+        newSelectionStart: start - 1,
+        newSelectionEnd: end - 1,
+      };
+    }
+  } else if (
     selectedText &&
     prefix &&
     suffix &&

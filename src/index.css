@@ -637,6 +637,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   gap: 6px;
 }
 
+.card-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-subtle);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: all 0.15s ease;
+}
+
+.card-drag-handle:hover {
+  color: var(--text-main);
+  background: var(--bg-muted);
+}
+
+.card-drag-handle:active {
+  cursor: grabbing;
+}
+
 .card-folder-badge {
   font-size: 11px;
   font-weight: 600;
@@ -781,6 +804,93 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
 .card-textarea::placeholder {
   color: var(--text-subtle);
+}
+
+.card-rich-editor {
+  width: 100%;
+  flex: 1;
+  min-height: 110px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main);
+  padding: 4px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  position: relative;
+}
+
+.card-rich-editor:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-subtle);
+  pointer-events: none;
+  display: block;
+}
+
+.card-rich-editor p {
+  margin: 0 0 4px;
+}
+
+.card-rich-editor strong,
+.card-rich-editor b {
+  font-weight: 700;
+}
+
+.card-rich-editor em,
+.card-rich-editor i {
+  font-style: italic;
+}
+
+.card-rich-editor s,
+.card-rich-editor strike,
+.card-rich-editor del {
+  text-decoration: line-through;
+}
+
+.card-rich-editor h1 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 6px 0 4px;
+}
+
+.card-rich-editor h2 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 5px 0 3px;
+}
+
+.card-rich-editor h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+
+.card-rich-editor ul,
+.card-rich-editor ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.card-rich-editor li {
+  margin: 2px 0;
+}
+
+.card-rich-editor code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: var(--bg-muted);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.card-rich-editor a {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .card-markdown-preview {
