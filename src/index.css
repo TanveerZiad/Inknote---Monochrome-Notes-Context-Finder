@@ -583,6 +583,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   align-items: start;
+  justify-items: stretch;
 }
 
 /* Modern Note Card */
@@ -593,10 +594,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   border-radius: 14px;
   padding: 18px 20px 16px;
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, min-height 0.2s ease;
   display: flex;
   flex-direction: column;
-  min-height: 240px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 280px;
+  align-self: start;
 }
 
 .note-card:hover {
@@ -614,13 +618,50 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   box-shadow: 0 0 0 1px var(--border-focus), var(--shadow-card-hover);
 }
 
-.note-card.note-size-compact {
-  min-height: 180px;
+/* Standard / Compact Card - Inherits exact standard uniform grid dimensions */
+.note-card.note-size-compact,
+.note-card.note-size-regular {
+  grid-column: span 1;
+  width: 100%;
+  min-height: 280px;
 }
 
+.note-card.note-size-compact .card-editor-area,
+.note-card.note-size-regular .card-editor-area {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Expanded Card - Full 2-column wide layout */
 .note-card.note-size-expanded {
   grid-column: span 2;
-  min-height: 420px;
+  width: 100%;
+  min-height: 480px;
+  z-index: 5;
+}
+
+.note-card.note-size-expanded .card-editor-area {
+  min-height: 340px;
+  overflow-y: auto;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera across card content */
+.no-scrollbar::-webkit-scrollbar,
+.card-editor-area::-webkit-scrollbar,
+.card-markdown-preview::-webkit-scrollbar,
+.card-rich-editor::-webkit-scrollbar,
+.card-textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox across card content */
+.no-scrollbar,
+.card-editor-area,
+.card-markdown-preview,
+.card-rich-editor,
+.card-textarea {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* Minimal Card Header */

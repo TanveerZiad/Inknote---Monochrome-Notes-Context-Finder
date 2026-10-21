@@ -162,7 +162,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        className="card-textarea card-rich-editor"
+        className="card-textarea card-rich-editor no-scrollbar"
         data-placeholder={placeholder}
         onInput={handleInput}
         onFocus={onFocus}
