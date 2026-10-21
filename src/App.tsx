@@ -1,865 +1,341 @@
-import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { CanvasTransform, Note } from './types';
-import { exportBackup, exportNotesBackup, importBackup, saveFileWithNotification, SAMPLE_NOTES } from './lib/storage';
-
-// Custom Hooks
-import { useHistoryState } from './hooks/useHistoryState';
-import { useNotesManager } from './hooks/useNotesManager';
-import { useCanvasTransform, screenToWorld } from './hooks/useCanvasTransform';
-import { useNoteSelection } from './hooks/useNoteSelection';
-
-// Modular Components
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  InfiniteCanvas,
-  CanvasControls,
-  NotesSidebar,
-  BatchActionBar,
-  NoteContextMenu,
-  HiddenClipboardListener,
-  UpdateAlertBanner,
-  StatusBar,
-} from './components';
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  BookOpen,
+  CalendarDays,
+  Download,
+  Eye,
+  FileText,
+  Folder,
+  FolderPlus,
+  Hash,
+  MessageCircle,
+  MoreHorizontal,
+  PanelLeft,
+  Pin,
+  Plus,
+  RotateCcw,
+  Search,
+  Send,
+  Shield,
+  Tag,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 
-// Lazy Loaded Modals for Bundle Size Optimization
-const SearchModal = lazy(() => import('./components/Modals/SearchModal').then(m => ({ default: m.SearchModal })));
-const DeleteConfirmationModal = lazy(() => import('./components/Modals/DeleteConfirmationModal').then(m => ({ default: m.DeleteConfirmationModal })));
-const SecurityModal = lazy(() => import('./components/Modals/SecurityModal').then(m => ({ default: m.SecurityModal })));
-const KeyboardShortcutsModal = lazy(() => import('./components/Modals/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
-const PasteConfirmModal = lazy(() => import('./components/Modals/PasteConfirmModal').then(m => ({ default: m.PasteConfirmModal })));
-const AboutModal = lazy(() => import('./components/Modals/AboutModal').then(m => ({ default: m.AboutModal })));
-const JournalCalendarModal = lazy(() => import('./components/Modals/JournalCalendarModal').then(m => ({ default: m.JournalCalendarModal })));
+type FolderItem = { id: string; name: string; pinned: boolean; priority: number };
+type NoteItem = {
+  id: string;
+  folderId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+  pinned?: boolean;
+  locked?: boolean;
+  journalDate?: string;
+};
+type Workspace = { folders: FolderItem[]; notes: NoteItem[]; trash?: NoteItem[] };
 
-import { sendNativeAppNotification } from './utils';
-import { checkForAppUpdates, ReleaseInfo } from './utils/updateChecker';
+const STORAGE_KEY = 'inknote-workspace-v1';
+
+const seedWorkspace: Workspace = {
+  folders: [
+    { id: 'inbox', name: 'Inbox', pinned: true, priority: 0 },
+    { id: 'projects', name: 'Projects', pinned: true, priority: 1 },
+    { id: 'journal', name: 'Journal', pinned: false, priority: 0 },
+    { id: 'references', name: 'References', pinned: false, priority: 1 },
+  ],
+  notes: [
+    { id: 'welcome', folderId: 'inbox', title: 'A quieter place to think', content: 'Inknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.', tags: ['welcome'], pinned: true, createdAt: '2026-10-20T08:00:00.000Z', updatedAt: '2026-10-20T08:00:00.000Z' },
+    { id: 'ideas', folderId: 'inbox', title: 'Ideas worth returning to', content: '- [ ] Shape the search experience\n- [ ] Add contextual retrieval\n\nA simple note system should feel like paper: immediate, tactile, and easy to revisit. Search should surface the right thought before it disappears.', tags: ['ideas'], createdAt: '2026-10-19T10:30:00.000Z', updatedAt: '2026-10-19T10:30:00.000Z' },
+    { id: 'project-brief', folderId: 'projects', title: 'Inknote direction', content: 'A black-and-white note space with folders, priorities, pins, keyword search, and context-aware retrieval. Keep interactions calm and liquid.\n\nUse @A quieter place to think to connect a note.', tags: ['product', 'inknote'], createdAt: '2026-10-18T09:00:00.000Z', updatedAt: '2026-10-20T07:15:00.000Z' },
+  ],
+};
+
+function getInitialWorkspace(): Workspace {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Workspace;
+      if (Array.isArray(parsed.folders) && Array.isArray(parsed.notes)) return parsed;
+    }
+  } catch {
+    // A malformed local workspace should never prevent the app from opening.
+  }
+  return seedWorkspace;
+}
+
+function makeId(prefix: string) {
+  const value = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  return `${prefix}-${value}`;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(value));
+}
+
+function snippet(note: NoteItem) {
+  const value = note.content.replace(/\s+/g, ' ').trim();
+  return value || 'An empty page.';
+}
+
+function scoreNote(note: NoteItem, folderName: string, query: string) {
+  const terms = query.toLowerCase().match(/[a-z0-9]{2,}/g) ?? [];
+  if (!terms.length) return 0;
+  const title = note.title.toLowerCase();
+  const content = note.content.toLowerCase();
+  const folder = folderName.toLowerCase();
+  const tags = (note.tags ?? []).join(' ').toLowerCase();
+  return terms.reduce((score, term) => score + (title.includes(term) ? 5 : 0) + (folder.includes(term) ? 3 : 0) + (tags.includes(term) ? 2 : 0) + (content.includes(term) ? 1 : 0), 0);
+}
+
+function downloadFile(fileName: string, content: string, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function dateKey(date = new Date()) { return date.toISOString().slice(0, 10); }
 
 export default function App() {
-  const [isNotesListOpen, setIsNotesListOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isJournalCalendarOpen, setIsJournalCalendarOpen] = useState(false);
-  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
-  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
-  const [updateReleaseAlert, setUpdateReleaseAlert] = useState<ReleaseInfo | null>(null);
-  const [isPanMode, setIsPanMode] = useState(false);
+  const [workspace, setWorkspace] = useState<Workspace>(getInitialWorkspace);
+  const [activeFolderId, setActiveFolderId] = useState('inbox');
+  const [selectedNoteId, setSelectedNoteId] = useState('welcome');
+  const [query, setQuery] = useState('');
+  const [ask, setAsk] = useState('');
+  const [contextMatches, setContextMatches] = useState<NoteItem[]>([]);
+  const [contextAnswer, setContextAnswer] = useState('Ask about a topic, plan, or detail. I’ll search the notes you already have.');
+  const [isFolderComposerOpen, setIsFolderComposerOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [tagDraft, setTagDraft] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [history, setHistory] = useState<Workspace[]>([]);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [notesToDelete, setNotesToDelete] = useState<string[]>([]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace)); }, [workspace]);
+  useEffect(() => { if (isFolderComposerOpen) folderInputRef.current?.focus(); }, [isFolderComposerOpen]);
 
-  const [isZenMode, setIsZenMode] = useState(false);
-  const [showStatusBar, setShowStatusBar] = useState<boolean>(() => {
-    const saved = localStorage.getItem('diarynote_show_statusbar');
-    return saved !== null ? saved === 'true' : true;
-  });
-  const [securityModalNoteId, setSecurityModalNoteId] = useState<string | null>(null);
-  const [securityModalMode, setSecurityModalMode] = useState<'set' | 'unlock'>('set');
+  const commitWorkspace = (next: Workspace) => {
+    setHistory((previous) => [...previous.slice(-29), workspace]);
+    setWorkspace(next);
+  };
 
-  const [contextMenuState, setContextMenuState] = useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-  }>({
-    isOpen: false,
-    x: 0,
-    y: 0,
-  });
+  const folders = useMemo(() => [...workspace.folders].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.priority - b.priority), [workspace.folders]);
+  const activeFolder = workspace.folders.find((folder) => folder.id === activeFolderId);
+  const visibleNotes = useMemo(() => {
+    const notes = activeFolderId === 'all' ? workspace.notes : workspace.notes.filter((note) => note.folderId === activeFolderId);
+    return [...notes].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || +new Date(b.updatedAt) - +new Date(a.updatedAt));
+  }, [activeFolderId, workspace.notes]);
+  const selectedNote = visibleNotes.find((note) => note.id === selectedNoteId) ?? visibleNotes[0];
+  const searchResults = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return [];
+    return workspace.notes.map((note) => ({ note, score: scoreNote(note, workspace.folders.find((folder) => folder.id === note.folderId)?.name ?? '', normalized) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || +new Date(b.note.updatedAt) - +new Date(a.note.updatedAt)).slice(0, 6);
+  }, [query, workspace]);
 
-  const [pasteModalState, setPasteModalState] = useState<{
-    isOpen: boolean;
-    text: string;
-  }>({
-    isOpen: false,
-    text: '',
-  });
-
-  // 1. History Stack Hook
-  const {
-    pushHistorySnapshot,
-    handleUndo: triggerUndo,
-    handleRedo: triggerRedo,
-    resetHistory,
-    canUndo,
-    canRedo,
-  } = useHistoryState();
-
-  // 2. Notes Manager Hook
-  const {
-    notes,
-    setNotes,
-    initAppDatabase,
-    handleAddNote,
-    handleCreateOrFocusDailyEntry,
-    handleUpdateNote,
-    handleUpdateBatchNotes,
-    handleDeleteNote,
-    handleDeleteMultipleNotes,
-    bringToFront,
-  } = useNotesManager(pushHistorySnapshot, resetHistory);
-
-  // 3. Canvas Transform Hook
-  const {
-    transform,
-    settings,
-    setSettings,
-    focusedNoteId,
-    handleCanvasTransformChange,
-    handleZoomIn,
-    handleZoomOut,
-    handleFitNotes,
-    handleNavigateToNote,
-  } = useCanvasTransform(notes, bringToFront);
-
-  // Initialize SQLite Database on mount and restore persisted canvas transform & settings
-  useEffect(() => {
-    initAppDatabase(({ transform: dbTransform, settings: dbSettings }) => {
-      if (dbTransform) {
-        handleCanvasTransformChange(dbTransform);
-      }
-      if (dbSettings) {
-        setSettings((prev) => ({ ...prev, ...dbSettings }));
-      }
-    });
-  }, [initAppDatabase, handleCanvasTransformChange, setSettings]);
-
-  // Check GitHub for first-time release updates on mount
-  useEffect(() => {
-    checkForAppUpdates().then((res) => {
-      if (res.updateAvailable && res.isFirstTimeAlert && res.latestRelease) {
-        setUpdateReleaseAlert(res.latestRelease);
-      }
-    });
-  }, []);
-
-  const handleUndo = useCallback(() => triggerUndo(setNotes), [triggerUndo, setNotes]);
-  const handleRedo = useCallback(() => triggerRedo(setNotes), [triggerRedo, setNotes]);
-
-  const handleToggleStatusBar = useCallback(() => {
-    setShowStatusBar((prev) => {
-      const next = !prev;
-      localStorage.setItem('diarynote_show_statusbar', String(next));
-      return next;
-    });
-  }, []);
-
-  // Request deletion of notes - if any targeted note is locked, require passcode verification first
-  const requestDeleteNotes = useCallback(
-    (ids: string[]) => {
-      if (ids.length === 0) return;
-      const hasLockedNote = ids.some((id) => notes.find((n) => n.id === id)?.isLocked);
-      if (hasLockedNote) {
-        // Find first locked note id to verify passcode before deletion
-        const firstLockedId = ids.find((id) => notes.find((n) => n.id === id)?.isLocked)!;
-        setSecurityModalNoteId(firstLockedId);
-        setSecurityModalMode('unlock');
-        // Pending notes to delete after passcode verification
-        setNotesToDelete(ids);
-        return;
-      }
-      setNotesToDelete(ids);
-      setIsDeleteModalOpen(true);
-    },
-    [notes]
-  );
-
-
-  const handleResetZoom = useCallback(() => {
-    handleCanvasTransformChange({ x: Math.round(window.innerWidth / 2 - 400), y: Math.round(window.innerHeight / 2 - 300), zoom: 1 });
-  }, [handleCanvasTransformChange]);
-
-  const handleTogglePanMode = useCallback(() => {
-    setIsPanMode((prev) => !prev);
-  }, []);
-
-  const handleToggleTheme = useCallback(() => {
-    setSettings((prev) => ({ ...prev, themeMode: prev.themeMode === 'dark' ? 'light' : 'dark' }));
-  }, [setSettings]);
-
-  const handleToggleSnapToGrid = useCallback(() => {
-    setSettings((prev) => ({ ...prev, snapToGrid: !prev.snapToGrid }));
-  }, [setSettings]);
-
-  const handleToggleConnections = useCallback(() => {
-    setSettings((prev) => ({ ...prev, showConnections: !prev.showConnections }));
-  }, [setSettings]);
-
-  // Lock selected notes — if global master passcode already set, lock immediately; otherwise open setup modal
-  const handleLockSelectedNotes = useCallback(
-    (ids: string[]) => {
-      if (ids.length === 0) return;
-      if (settings.masterPasswordHash) {
-        // Master passcode configured — lock all selected notes immediately
-        const notesToLock = notes
-          .filter((n) => ids.includes(n.id) && !n.isLocked)
-          .map((n) => ({ ...n, isLocked: true }));
-        if (notesToLock.length > 0) {
-          handleUpdateBatchNotes(notesToLock);
-          const count = notesToLock.length;
-          sendNativeAppNotification(
-            'Note Locked',
-            count === 1 ? `Locked note "${notesToLock[0].title || 'Untitled Note'}"` : `Locked ${count} notes`
-          );
-        }
-      } else {
-        // First time global setup — open setup modal for the first selected note
-        setSecurityModalNoteId(ids[0]);
-        setSecurityModalMode('set');
-      }
-    },
-    [notes, settings.masterPasswordHash, handleUpdateBatchNotes]
-  );
-
-
-  // 4. Note Selection & Keyboard Shortcuts Hook
-  const {
-    selectedNoteIds,
-    setSelectedNoteIds,
-    selectedNoteId,
-    editingNoteId,
-    setEditingNoteId,
-    handleSelectNote,
-    handleSelectMultipleNotes,
-  } = useNoteSelection(
-    notes,
-    handleUndo,
-    handleRedo,
-    requestDeleteNotes,
-    setIsSearchOpen,
-    (x, y) => handleCreateNote(x, y),
-    handleFitNotes,
-    handleResetZoom,
-    handleTogglePanMode,
-    handleToggleTheme,
-    handleToggleSnapToGrid,
-    handleToggleConnections,
-    () => setIsZenMode((prev) => !prev),
-    handleLockSelectedNotes,
-    (id) => handleNavigateToNote(id, setSelectedNoteIds),
-    () => {
-      // Group shortcut (Ctrl+G) handler
-      if (selectedNoteIds.length < 2) return;
-      const selectedNotes = notes.filter((n) => selectedNoteIds.includes(n.id));
-      const newGroupId = `group-${Date.now()}`;
-      const groupName = `Group ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-      const updated = selectedNotes.map((n) => ({
-        ...n,
-        groupId: newGroupId,
-        groupName,
-        tags: n.tags?.filter((t) => !/^#?Group\s/i.test(t)),
-      }));
-      handleUpdateBatchNotes(updated);
-      setSelectedNoteIds([]);
-    },
-    () => {
-      // Ungroup shortcut (Ctrl+Shift+G) handler
-      if (selectedNoteIds.length === 0) return;
-      const selectedNotes = notes.filter((n) => selectedNoteIds.includes(n.id) && n.groupId);
-      if (selectedNotes.length === 0) return;
-      const updated = selectedNotes.map((n) => ({
-        ...n,
-        groupId: undefined,
-        groupName: undefined,
-        tags: n.tags?.filter((t) => !/^#?Group\s/i.test(t)),
-      }));
-      handleUpdateBatchNotes(updated);
-      setSelectedNoteIds([]);
-    },
-    () => setIsShortcutsModalOpen((prev) => !prev)
-  );
-
-  const handleOpenOrCreateTodayJournal = useCallback(
-    (targetDateStr?: string) => {
-      const { noteId } = handleCreateOrFocusDailyEntry(transform, settings, targetDateStr);
-      handleNavigateToNote(noteId, setSelectedNoteIds);
-    },
-    [handleCreateOrFocusDailyEntry, transform, settings, handleNavigateToNote, setSelectedNoteIds]
-  );
-
-  const handleDeleteProtectedNote = useCallback(
-    (noteId: string) => {
-      const target = notes.find((n) => n.id === noteId);
-      if (target?.isLocked) {
-        setSecurityModalNoteId(noteId);
-        setSecurityModalMode('unlock');
-        setNotesToDelete([noteId]);
-      } else {
-        handleDeleteNote(noteId);
-        setSelectedNoteIds((prev) => prev.filter((id) => id !== noteId));
-        sendNativeAppNotification(
-          'Note Deleted',
-          `Deleted note "${target?.title || 'Untitled Note'}"`
-        );
-      }
-    },
-    [notes, handleDeleteNote, setSelectedNoteIds]
-  );
-
-  const handleCreateNote = useCallback(
-    (screenX?: number, screenY?: number) => {
-      let worldX: number | undefined = undefined;
-      let worldY: number | undefined = undefined;
-
-      if (typeof screenX === 'number' && typeof screenY === 'number' && !isNaN(screenX) && !isNaN(screenY)) {
-        const coords = screenToWorld(screenX, screenY, transform);
-        worldX = coords.worldX;
-        worldY = coords.worldY;
-        if (settings.snapToGrid) {
-          worldX = Math.round(worldX / 24) * 24;
-          worldY = Math.round(worldY / 24) * 24;
-        }
-      }
-
-      const newId = handleAddNote(transform, settings, worldX, worldY);
-      setSelectedNoteIds([newId]);
-      setEditingNoteId(newId);
-    },
-    [handleAddNote, transform, settings, setSelectedNoteIds, setEditingNoteId]
-  );
-
-  const handleImportBackupFile = useCallback(
-    (file: File) => {
-      importBackup(file)
-        .then(({ notes: importedNotes, transform: importedTransform, settings: importedSettings }) => {
-          let importedCount = 0;
-          if (importedNotes) {
-            setNotes(importedNotes);
-            resetHistory(importedNotes);
-            importedCount = importedNotes.length;
-          }
-          if (importedTransform) handleCanvasTransformChange(importedTransform);
-          if (importedSettings) setSettings((prev) => ({ ...prev, ...importedSettings }));
-
-          sendNativeAppNotification(
-            'Import Successful',
-            `Successfully imported ${importedCount} note${importedCount === 1 ? '' : 's'} from ${file.name}`
-          );
-        })
-        .catch((err) => {
-          console.error('Failed to import backup:', err);
-          sendNativeAppNotification(
-            'Import Failed',
-            `Failed to import backup from ${file.name}: ${err.message || 'Invalid backup structure'}`
-          );
-        });
-    },
-    [handleCanvasTransformChange, resetHistory, setNotes, setSettings]
-  );
-
-  const handleConfirmDelete = useCallback(() => {
-    if (notesToDelete.length > 0) {
-      handleDeleteMultipleNotes(notesToDelete);
-      setSelectedNoteIds((prev) => prev.filter((id) => !notesToDelete.includes(id)));
-      const count = notesToDelete.length;
-      sendNativeAppNotification(
-        'Notes Deleted',
-        count === 1 ? `Deleted 1 note` : `Deleted ${count} notes`
-      );
-      setNotesToDelete([]);
-    }
-    setIsDeleteModalOpen(false);
-  }, [handleDeleteMultipleNotes, notesToDelete, setSelectedNoteIds]);
-
-  const securityModalNote = notes.find((n) => n.id === securityModalNoteId);
-
-  const handleExportNote = useCallback(async (note: Note, format: 'md' | 'txt' | 'json') => {
-    if (note.isLocked) {
-      setSecurityModalNoteId(note.id);
-      setSecurityModalMode('unlock');
-      return;
-    }
-    const cleanTitle = (note.title || 'Untitled_Note').trim().replace(/[^a-z0-9_\-]/gi, '_');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const fileName = `${cleanTitle}_${dateStr}.${format}`;
-
-    if (format === 'json') {
-      await exportNotesBackup([note], fileName);
-    } else {
-      const text = `# ${note.title || 'Untitled Note'}\n\n${note.content || ''}`;
-      const contentType = format === 'md' ? 'text/markdown;charset=utf-8;' : 'text/plain;charset=utf-8;';
-      await saveFileWithNotification(fileName, text, 'Notes', contentType);
-    }
-  }, []);
-
-  const handleContextMenuNote = useCallback(
-    (e: React.MouseEvent, noteId: string) => {
-      e.preventDefault();
-      setSelectedNoteIds((prev) => {
-        if (prev.includes(noteId)) return prev;
-        return e.shiftKey ? [...prev, noteId] : [noteId];
-      });
-      setContextMenuState({
-        isOpen: true,
-        x: e.clientX,
-        y: e.clientY,
-      });
-    },
-    [setSelectedNoteIds]
-  );
-
-  const handleContextMenuCanvas = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setSelectedNoteIds([]);
-    setContextMenuState({
-      isOpen: true,
-      x: e.clientX,
-      y: e.clientY,
-    });
-  }, [setSelectedNoteIds]);
-
-  // Global native paste event handler to create note from external clipboard
-  useEffect(() => {
-    const handleGlobalPaste = (e: ClipboardEvent) => {
-      const activeEl = document.activeElement;
-      // Skip if user is typing in an input/textarea (but allow our hidden clipboard listener)
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          (activeEl.tagName === 'TEXTAREA' && !activeEl.getAttribute('aria-hidden')) ||
-          activeEl.getAttribute('contenteditable') === 'true')
-      ) {
-        return;
-      }
-
-      const pastedText = e.clipboardData?.getData('text/plain');
-      if (pastedText && pastedText.trim().length > 0) {
-        e.preventDefault();
-        setPasteModalState({
-          isOpen: true,
-          text: pastedText.trim(),
-        });
-      }
+  const selectNote = (note: NoteItem) => { setSelectedNoteId(note.id); setActiveFolderId(note.folderId); setIsUnlocked(false); setQuery(''); };
+  const createFolder = (event: FormEvent) => {
+    event.preventDefault();
+    const name = folderName.trim();
+    if (!name) return;
+    const unpinnedPriorities = workspace.folders.filter((folder) => !folder.pinned).map((folder) => folder.priority);
+    const folder: FolderItem = { id: makeId('folder'), name, pinned: false, priority: Math.max(-1, ...unpinnedPriorities) + 1 };
+    commitWorkspace({ ...workspace, folders: [...workspace.folders, folder] });
+    setActiveFolderId(folder.id); setFolderName(''); setIsFolderComposerOpen(false);
+  };
+  const createNote = () => {
+    const folderId = activeFolderId === 'all' ? folders[0]?.id : activeFolderId;
+    if (!folderId) return;
+    const now = new Date().toISOString();
+    const note: NoteItem = { id: makeId('note'), folderId, title: 'Untitled note', content: '', createdAt: now, updatedAt: now };
+    commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
+    setActiveFolderId(folderId); setSelectedNoteId(note.id);
+  };
+  const updateSelectedNote = (changes: Partial<Pick<NoteItem, 'title' | 'content'>>) => {
+    if (!selectedNote) return;
+    setWorkspace((previous) => ({ ...previous, notes: previous.notes.map((note) => note.id === selectedNote.id ? { ...note, ...changes, updatedAt: new Date().toISOString() } : note) }));
+  };
+  const deleteSelectedNote = () => {
+    if (!selectedNote) return;
+    commitWorkspace({ ...workspace, notes: workspace.notes.filter((note) => note.id !== selectedNote.id), trash: [selectedNote, ...(workspace.trash ?? [])] });
+    setSelectedNoteId(visibleNotes.find((note) => note.id !== selectedNote.id)?.id ?? '');
+  };
+  const togglePin = (id: string) => {
+    const target = workspace.folders.find((folder) => folder.id === id);
+    if (!target) return;
+      const nextPinned = !target.pinned;
+      const lastPriority = Math.max(-1, ...workspace.folders.filter((folder) => folder.pinned === nextPinned).map((folder) => folder.priority));
+    commitWorkspace({ ...workspace, folders: workspace.folders.map((folder) => folder.id === id ? { ...folder, pinned: nextPinned, priority: lastPriority + 1 } : folder) });
+  };
+  const moveFolder = (id: string, direction: -1 | 1) => {
+      const target = workspace.folders.find((folder) => folder.id === id);
+      if (!target) return;
+      const group = workspace.folders.filter((folder) => folder.pinned === target.pinned).sort((a, b) => a.priority - b.priority);
+      const currentIndex = group.findIndex((folder) => folder.id === id);
+      const nextIndex = currentIndex + direction;
+      if (nextIndex < 0 || nextIndex >= group.length) return;
+      const reordered = [...group]; [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+      const priorities = new Map(reordered.map((folder, index) => [folder.id, index]));
+      commitWorkspace({ ...workspace, folders: workspace.folders.map((folder) => priorities.has(folder.id) ? { ...folder, priority: priorities.get(folder.id)! } : folder) });
+  };
+  const askInknote = (event: FormEvent) => {
+    event.preventDefault();
+    const question = ask.trim();
+    if (!question) return;
+    const matches = workspace.notes.map((note) => ({ note, score: scoreNote(note, workspace.folders.find((folder) => folder.id === note.folderId)?.name ?? '', question) }))
+      .filter(({ score }) => score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map(({ note }) => note);
+    setContextMatches(matches);
+    setContextAnswer(matches.length ? `I found ${matches.length} ${matches.length === 1 ? 'note' : 'notes'} with relevant context. Start with the strongest match below.` : 'I could not connect that to a note yet. Try a distinctive word, folder name, or phrase from the note.');
+    setAsk('');
+  };
+  const toggleNotePin = () => {
+    if (!selectedNote) return;
+    commitWorkspace({ ...workspace, notes: workspace.notes.map((note) => note.id === selectedNote.id ? { ...note, pinned: !note.pinned, updatedAt: new Date().toISOString() } : note) });
+  };
+  const toggleNoteLock = () => {
+    if (!selectedNote) return;
+    if (selectedNote.locked) { setIsUnlocked(true); return; }
+    commitWorkspace({ ...workspace, notes: workspace.notes.map((note) => note.id === selectedNote.id ? { ...note, locked: true, updatedAt: new Date().toISOString() } : note) });
+    setIsUnlocked(false);
+  };
+  const addTag = () => {
+    if (!selectedNote || !tagDraft.trim()) return;
+    const tag = tagDraft.trim().replace(/^#/, '');
+    if ((selectedNote.tags ?? []).includes(tag)) { setTagDraft(''); return; }
+    commitWorkspace({ ...workspace, notes: workspace.notes.map((note) => note.id === selectedNote.id ? { ...note, tags: [...(note.tags ?? []), tag], updatedAt: new Date().toISOString() } : note) });
+    setTagDraft('');
+  };
+  const removeTag = (tag: string) => {
+    if (!selectedNote) return;
+    commitWorkspace({ ...workspace, notes: workspace.notes.map((note) => note.id === selectedNote.id ? { ...note, tags: (note.tags ?? []).filter((item) => item !== tag) } : note) });
+  };
+  const openDailyJournal = () => {
+    const today = dateKey();
+    const existing = workspace.notes.find((note) => note.journalDate === today);
+    if (existing) { selectNote(existing); return; }
+    const journalFolder = workspace.folders.find((folder) => folder.name.toLowerCase() === 'journal') ?? folders[0];
+    if (!journalFolder) return;
+    const now = new Date().toISOString();
+    const note: NoteItem = { id: makeId('journal'), folderId: journalFolder.id, title: `Journal · ${formatDate(now)}`, content: `# ${formatDate(now)}\n\nWhat is on your mind today?`, tags: ['journal'], journalDate: today, createdAt: now, updatedAt: now };
+    commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
+    selectNote(note);
+  };
+  const exportSelectedNote = () => {
+    if (!selectedNote) return;
+    downloadFile(`${(selectedNote.title || 'untitled-note').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'note'}.md`, `# ${selectedNote.title || 'Untitled note'}\n\n${selectedNote.content}`,'text/markdown;charset=utf-8');
+  };
+  const exportWorkspace = () => downloadFile('inknote-backup.json', JSON.stringify(workspace, null, 2), 'application/json;charset=utf-8');
+  const importWorkspace = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(String(reader.result)) as Workspace;
+        if (!Array.isArray(imported.folders) || !Array.isArray(imported.notes)) throw new Error('Invalid Inknote backup');
+        commitWorkspace({ ...imported, trash: imported.trash ?? [] });
+        setActiveFolderId(imported.folders[0]?.id ?? 'all');
+        setSelectedNoteId(imported.notes[0]?.id ?? '');
+      } catch { window.alert('That file is not a valid Inknote backup.'); }
     };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+  const undo = () => {
+    const previous = history.at(-1);
+    if (!previous) return;
+    setWorkspace(previous);
+    setHistory((items) => items.slice(0, -1));
+  };
 
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          activeEl.getAttribute('contenteditable') === 'true')
-      ) {
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
-        e.preventDefault();
-        handleOpenOrCreateTodayJournal();
-      }
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('[aria-label="Search every note"]')?.focus(); }
+      if (modifier && event.key.toLowerCase() === 'n') { event.preventDefault(); createNote(); }
+      if (modifier && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); }
+      if (modifier && event.shiftKey && event.key.toLowerCase() === 'j') { event.preventDefault(); openDailyJournal(); }
     };
-
-    window.addEventListener('paste', handleGlobalPaste);
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => {
-      window.removeEventListener('paste', handleGlobalPaste);
-      window.removeEventListener('keydown', handleGlobalKeyDown);
-    };
-  }, [handleOpenOrCreateTodayJournal]);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [history, workspace, activeFolderId, selectedNoteId]);
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden ${settings.themeMode === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'}`}>
-      {/* Zen Mode Exit Badge */}
-      {isZenMode && (
-        <button
-          onClick={() => setIsZenMode(false)}
-          className="fixed top-4 right-4 z-50 px-3.5 py-1.5 rounded-xl bg-slate-900/90 text-white text-xs font-mono border border-slate-700 shadow-xl backdrop-blur-md hover:bg-slate-800 transition-all select-none"
-        >
-          Zen Mode (Click or press Z to exit)
-        </button>
-      )}
+    <main className="inknote-shell">
+      <aside className={`inknote-sidebar ${isSidebarOpen ? '' : 'is-collapsed'}`}>
+        <div className="sidebar-topline">
+          <div className="wordmark" aria-label="Inknote"><span className="wordmark-mark">I</span><span>Inknote</span></div>
+          <button className="icon-button sidebar-collapse" onClick={() => setIsSidebarOpen(false)} aria-label="Hide sidebar"><PanelLeft size={17} /></button>
+        </div>
+        <button className="library-button" onClick={() => setActiveFolderId('all')}><Archive size={16} /><span>All notes</span><b>{workspace.notes.length}</b></button>
+        <div className="folder-label-row"><span>Folders</span><button className="tiny-action" onClick={() => setIsFolderComposerOpen((open) => !open)} aria-label="Create folder"><FolderPlus size={16} /></button></div>
+        {isFolderComposerOpen && <form className="folder-composer" onSubmit={createFolder}>
+          <Folder size={15} /><input ref={folderInputRef} value={folderName} onChange={(event) => setFolderName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setIsFolderComposerOpen(false); }} placeholder="Folder name" aria-label="New folder name" />
+          <button type="submit" aria-label="Save folder"><Plus size={15} /></button>
+        </form>}
+        <nav className="folder-list" aria-label="Folders">
+          {folders.map((folder) => {
+            const count = workspace.notes.filter((note) => note.folderId === folder.id).length;
+            const isActive = activeFolderId === folder.id;
+            return <div className={`folder-row ${isActive ? 'is-active' : ''}`} key={folder.id}>
+              <button className="folder-select" onClick={() => setActiveFolderId(folder.id)}><Folder size={16} fill={isActive ? 'currentColor' : 'none'} /><span>{folder.name}</span><em>{count}</em></button>
+              <div className="folder-tools" aria-label={`${folder.name} options`}>
+                <button onClick={() => togglePin(folder.id)} aria-label={folder.pinned ? `Unpin ${folder.name}` : `Pin ${folder.name}`} className={folder.pinned ? 'is-pinned' : ''}><Pin size={13} fill={folder.pinned ? 'currentColor' : 'none'} /></button>
+                <button onClick={() => moveFolder(folder.id, -1)} aria-label={`Move ${folder.name} up`}><ArrowUp size={13} /></button>
+                <button onClick={() => moveFolder(folder.id, 1)} aria-label={`Move ${folder.name} down`}><ArrowDown size={13} /></button>
+              </div>
+            </div>;
+          })}
+        </nav>
+        <div className="sidebar-footnote"><Pin size={13} /><span>Pin folders and use arrows to set their priority.</span></div>
+      </aside>
 
-      {/* Infinite Canvas */}
-      <InfiniteCanvas
-        notes={notes}
-        transform={transform}
-        selectedNoteId={selectedNoteId}
-        selectedNoteIds={selectedNoteIds}
-        editingNoteId={editingNoteId}
-        focusedNoteId={focusedNoteId}
-        gridType={settings.gridType}
-        themeMode={settings.themeMode}
-        snapToGrid={settings.snapToGrid}
-        showConnections={settings.showConnections}
-        isPanMode={isPanMode}
-        onTransformChange={handleCanvasTransformChange}
-        onSelectNote={handleSelectNote}
-        onSelectMultipleNotes={handleSelectMultipleNotes}
-        onNavigateToNote={(id) => handleNavigateToNote(id, setSelectedNoteIds)}
-        onUpdateNote={handleUpdateNote}
-        onUpdateBatchNotes={handleUpdateBatchNotes}
-        onDeleteNote={handleDeleteProtectedNote}
-        onBringToFront={bringToFront}
-        onDoubleClickCanvas={handleCreateNote}
-        onRequestLockNote={(id) => {
-          if (settings.masterPasswordHash) {
-            // Global master passcode already set — lock immediately without modal
-            const note = notes.find((n) => n.id === id);
-            if (note) {
-              handleUpdateNote({
-                ...note,
-                isLocked: true,
-              });
-              sendNativeAppNotification(
-                'Note Locked',
-                `Locked note "${note.title || 'Untitled Note'}"`
-              );
-            }
-          } else {
-            // First time setup — prompt to set app-wide global master passcode
-            setSecurityModalNoteId(id);
-            setSecurityModalMode('set');
-          }
-        }}
-        onRequestUnlockNote={(id) => {
-          setSecurityModalNoteId(id);
-          setSecurityModalMode('unlock');
-        }}
-        onExportNote={handleExportNote}
-        onContextMenuNote={handleContextMenuNote}
-        onContextMenuCanvas={handleContextMenuCanvas}
-      />
-
-      {/* Docked Bottom Control Bar Container with Corner Morphing */}
-      {!isZenMode && (
-        <motion.div
-          layout
-          initial={false}
-          animate={{
-            borderRadius: selectedNoteIds.length >= 2
-              ? ['6px', '10px 10px 4px 4px', '6px']
-              : ['6px', '4px 4px 10px 10px', '6px'],
-          }}
-          transition={{
-            layout: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
-            borderRadius: { duration: 0.15, ease: 'easeOut' },
-          }}
-          className={`fixed ${showStatusBar ? 'bottom-10' : 'bottom-6'} left-1/2 -translate-x-1/2 z-40 flex flex-col items-center border shadow-sm select-none w-[640px] max-w-[calc(100vw-32px)] transition-all duration-200 ${
-            selectedNoteIds.length >= 2 ? 'overflow-visible' : 'overflow-hidden'
-          } ${
-            settings.themeMode === 'light'
-              ? 'bg-white/95 border-slate-200 text-slate-800'
-              : 'bg-slate-900/90 border-slate-800 text-slate-200'
-          }`}
-        >
-          {/* Batch Action Bar Header (POSITIONED BEHIND CanvasControls z-10) */}
-          <AnimatePresence initial={false}>
-            {selectedNoteIds.length >= 2 && (
-              <motion.div
-                key="batch-menu-wrapper"
-                initial={{
-                  height: 0,
-                  opacity: 0,
-                  y: 15,
-                }}
-                animate={{
-                  height: 'auto',
-                  opacity: 1,
-                  y: 0,
-                }}
-                exit={{
-                  height: 0,
-                  opacity: 0,
-                  y: 15,
-                }}
-                transition={{
-                  height: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
-                  y: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
-                  opacity: { duration: 0.12, ease: 'linear' },
-                }}
-                className="w-full relative z-10 overflow-visible origin-bottom"
-              >
-                <BatchActionBar
-                  selectedNoteIds={selectedNoteIds}
-                  notes={notes}
-                  themeMode={settings.themeMode}
-                  onUpdateBatchNotes={handleUpdateBatchNotes}
-                  onDeleteNotes={(ids) => {
-                    setNotesToDelete(ids);
-                    setIsDeleteModalOpen(true);
-                  }}
-                  onClearSelection={() => setSelectedNoteIds([])}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Primary Canvas Controls Row (POSITIONED IN FRONT z-20) */}
-          <div className={`w-full relative z-20 rounded-b-[inherit] ${
-            settings.themeMode === 'light' ? 'bg-white/95' : 'bg-slate-900/90'
-          }`}>
-            <CanvasControls
-              notes={notes}
-              zoom={transform.zoom}
-              gridType={settings.gridType}
-              themeMode={settings.themeMode}
-              snapToGrid={settings.snapToGrid}
-              showConnections={settings.showConnections}
-              hasBatchBar={selectedNoteIds.length >= 2}
-              isPanMode={isPanMode}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onAddNote={() => handleCreateNote()}
-              onOpenTodayJournal={() => handleOpenOrCreateTodayJournal()}
-              onOpenJournalCalendar={() => setIsJournalCalendarOpen(true)}
-              onTogglePanMode={handleTogglePanMode}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onResetZoom={handleResetZoom}
-              onFitNotes={handleFitNotes}
-              onChangeGridType={(gridType) => setSettings((prev) => ({ ...prev, gridType }))}
-              onToggleTheme={handleToggleTheme}
-              onToggleSnapToGrid={handleToggleSnapToGrid}
-              onToggleConnections={handleToggleConnections}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onOpenSearch={() => setIsSearchOpen(true)}
-              onOpenShortcutsModal={() => setIsShortcutsModalOpen(true)}
-              onOpenAbout={() => setIsAboutModalOpen(true)}
-              onOpenNotesList={() => setIsNotesListOpen(true)}
-              onExportBackup={() => exportBackup(notes, transform, settings)}
-              onImportBackup={handleImportBackupFile}
-              showStatusBar={showStatusBar}
-              onToggleStatusBar={handleToggleStatusBar}
-            />
+      <section className="inknote-workspace">
+        {!isSidebarOpen && <button className="icon-button sidebar-reopen" onClick={() => setIsSidebarOpen(true)} aria-label="Show sidebar"><PanelLeft size={18} /></button>}
+        <header className="workspace-header">
+          <div><p className="eyebrow">{activeFolderId === 'all' ? 'Your library' : activeFolder?.pinned ? 'Pinned folder' : 'Folder'}</p><h1>{activeFolderId === 'all' ? 'All notes' : activeFolder?.name ?? 'Notes'}</h1></div>
+          <div className="header-actions">
+            <div className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every note" aria-label="Search every note" />{query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+              {searchResults.length > 0 && <div className="search-popover"><p>Notes matching “{query}”</p>{searchResults.map(({ note }) => <button key={note.id} onClick={() => selectNote(note)}><FileText size={15} /><span><b>{note.title || 'Untitled note'}</b><small>{workspace.folders.find((folder) => folder.id === note.folderId)?.name} · {snippet(note)}</small></span></button>)}</div>}
+            </div>
+            <button className="header-icon" onClick={openDailyJournal} title="Today’s journal (Ctrl/Cmd Shift J)" aria-label="Open today’s journal"><CalendarDays size={17} /></button>
+            <button className="header-icon" onClick={undo} disabled={!history.length} title="Undo (Ctrl/Cmd Z)" aria-label="Undo"><RotateCcw size={16} /></button>
+            <button className="new-note-button" onClick={createNote}><Plus size={17} /> New note</button>
           </div>
-        </motion.div>
-      )}
-
-      {/* Sidebar Drawer */}
-      <NotesSidebar
-        isOpen={isNotesListOpen}
-        notes={notes}
-        themeMode={settings.themeMode}
-        onClose={() => setIsNotesListOpen(false)}
-        onSelectNote={(id) => handleNavigateToNote(id, setSelectedNoteIds)}
-        onAddNote={() => handleCreateNote()}
-        onDeleteNote={handleDeleteProtectedNote}
-      />
-
-      <Suspense fallback={null}>
-        {/* Command Palette Search Modal */}
-        <SearchModal
-          isOpen={isSearchOpen}
-          notes={notes}
-          themeMode={settings.themeMode}
-          onClose={() => setIsSearchOpen(false)}
-          onSelectNote={(id) => handleNavigateToNote(id, setSelectedNoteIds)}
-        />
-
-        {/* Delete Confirmation Modal */}
-        <DeleteConfirmationModal
-          isOpen={isDeleteModalOpen}
-          count={notesToDelete.length}
-          themeMode={settings.themeMode}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setIsDeleteModalOpen(false)}
-        />
-
-        {/* App Global Master Security Lock & Unlock Modal */}
-        <SecurityModal
-          isOpen={securityModalNoteId !== null}
-          mode={securityModalMode}
-          themeMode={settings.themeMode}
-          existingQuestion={settings.masterSecurityQuestion}
-          existingPasswordHash={settings.masterPasswordHash}
-          existingAnswerHash={settings.masterSecurityAnswerHash}
-          onClose={() => setSecurityModalNoteId(null)}
-          onSuccessSet={(masterPasswordHash, masterSecurityQuestion, masterSecurityAnswerHash) => {
-            // Store global master passcode & recovery question in App Settings
-            setSettings((prev) => ({
-              ...prev,
-              masterPasswordHash,
-              masterSecurityQuestion,
-              masterSecurityAnswerHash,
-            }));
-
-            // Lock target note immediately
-            if (securityModalNote) {
-              handleUpdateNote({
-                ...securityModalNote,
-                isLocked: true,
-              });
-            }
-          }}
-          onSuccessUnlock={() => {
-            if (!securityModalNote) return;
-            
-            // If pending deletion was requested, proceed with deletion after successful unlock
-            if (notesToDelete.length > 0) {
-              handleDeleteMultipleNotes(notesToDelete);
-              setSelectedNoteIds((prev) => prev.filter((id) => !notesToDelete.includes(id)));
-              const count = notesToDelete.length;
-              sendNativeAppNotification(
-                'Note Deleted',
-                count === 1 ? `Deleted protected note "${securityModalNote.title || 'Untitled Note'}"` : `Deleted ${count} protected notes`
-              );
-              setNotesToDelete([]);
-              return;
-            }
-
-            // Otherwise unlock note view
-            handleUpdateNote({
-              ...securityModalNote,
-              isLocked: false,
-            });
-          }}
-        />
-
-        {/* Keyboard Shortcuts Cheatsheet Modal */}
-        <KeyboardShortcutsModal
-          isOpen={isShortcutsModalOpen}
-          themeMode={settings.themeMode}
-          onClose={() => setIsShortcutsModalOpen(false)}
-        />
-
-        {/* Journal Calendar Modal */}
-        <JournalCalendarModal
-          isOpen={isJournalCalendarOpen}
-          onClose={() => setIsJournalCalendarOpen(false)}
-          notes={notes}
-          onSelectOrCreateDate={(dateStr) => handleOpenOrCreateTodayJournal(dateStr)}
-          themeMode={settings.themeMode}
-        />
-      </Suspense>
-
-      {/* Right-Click Context Menu for Selected Note(s) */}
-      <NoteContextMenu
-        x={contextMenuState.x}
-        y={contextMenuState.y}
-        isOpen={contextMenuState.isOpen}
-        selectedNoteIds={selectedNoteIds}
-        notes={notes}
-        themeMode={settings.themeMode}
-        onClose={() => setContextMenuState((prev) => ({ ...prev, isOpen: false }))}
-        onNavigateToNote={(id) => handleNavigateToNote(id, setSelectedNoteIds)}
-        onEditNote={(id) => {
-          setSelectedNoteIds([id]);
-          setEditingNoteId(id);
-        }}
-        onTogglePin={(ids) => {
-          const targets = notes.filter((n) => ids.includes(n.id));
-          const allPinned = targets.every((n) => n.isPinned);
-          const updated = targets.map((n) => ({ ...n, isPinned: !allPinned }));
-          handleUpdateBatchNotes(updated);
-        }}
-        onLockNotes={(ids) => handleLockSelectedNotes(ids)}
-        onGroupNotes={() => {
-          if (selectedNoteIds.length < 2) return;
-          const targets = notes.filter((n) => selectedNoteIds.includes(n.id));
-          const newGroupId = `group-${Date.now()}`;
-          const groupName = `Group ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-          const updated = targets.map((n) => ({
-            ...n,
-            groupId: newGroupId,
-            groupName,
-          }));
-          handleUpdateBatchNotes(updated);
-        }}
-        onUngroupNotes={() => {
-          const targets = notes.filter((n) => selectedNoteIds.includes(n.id) && n.groupId);
-          const updated = targets.map((n) => ({
-            ...n,
-            groupId: undefined,
-            groupName: undefined,
-          }));
-          handleUpdateBatchNotes(updated);
-        }}
-        onDuplicateNotes={(ids) => {
-          ids.forEach((id) => {
-            const target = notes.find((n) => n.id === id);
-            if (target) {
-              const newId = `note-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-              const dupNote: Note = {
-                ...target,
-                id: newId,
-                title: `${target.title || 'Untitled'} (Copy)`,
-                x: target.x + 30,
-                y: target.y + 30,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-              handleUpdateNote(dupNote);
-              setSelectedNoteIds([newId]);
-            }
-          });
-        }}
-        onExportNotes={(ids, format) => {
-          const targets = notes.filter((n) => ids.includes(n.id));
-          if (targets.length === 1) {
-            handleExportNote(targets[0], format);
-          } else if (targets.length > 1) {
-            const fileName = `selected-notes-backup-${new Date().toISOString().slice(0, 10)}.json`;
-            exportNotesBackup(targets, fileName);
-          }
-        }}
-        onDeleteNotes={(ids) => requestDeleteNotes(ids)}
-        onChangePaperTheme={(ids, paperTheme) => {
-          const targets = notes.filter((n) => ids.includes(n.id));
-          const updated = targets.map((n) => ({ ...n, paperTheme }));
-          handleUpdateBatchNotes(updated);
-        }}
-        onPasteFromClipboard={() => {
-          setPasteModalState({ isOpen: true, text: '' });
-        }}
-        onCreateNoteHere={() => handleCreateNote(contextMenuState.x, contextMenuState.y)}
-        onSelectAllNotes={() => setSelectedNoteIds(notes.map((n) => n.id))}
-      />
-
-      <Suspense fallback={null}>
-        {/* Clipboard Ctrl+V Paste Confirm Modal */}
-        <PasteConfirmModal
-          isOpen={pasteModalState.isOpen}
-          pastedText={pasteModalState.text}
-          themeMode={settings.themeMode}
-          onClose={() => setPasteModalState({ isOpen: false, text: '' })}
-          onConfirm={(pastedTitle, pastedContent) => {
-            const newId = handleAddNote(transform, settings);
-            setNotes((prev) =>
-              prev.map((n) =>
-                n.id === newId ? { ...n, title: pastedTitle, content: pastedContent } : n
-              )
-            );
-            setSelectedNoteIds([newId]);
-            sendNativeAppNotification(
-              'Note Created',
-              `Created note "${pastedTitle}" from clipboard paste`
-            );
-          }}
-        />
-
-        {/* Hidden Native Clipboard Paste Listener (bypasses browser/distro permissions) */}
-        <HiddenClipboardListener
-          onPasteText={(text) => setPasteModalState({ isOpen: true, text })}
-        />
-
-        {/* About Application Modal */}
-        <AboutModal
-          isOpen={isAboutModalOpen}
-          themeMode={settings.themeMode}
-          onClose={() => setIsAboutModalOpen(false)}
-        />
-      </Suspense>
-
-      {/* First-Time Release Update Alert Banner */}
-      {updateReleaseAlert && (
-        <UpdateAlertBanner
-          release={updateReleaseAlert}
-          themeMode={settings.themeMode}
-          onDismiss={() => setUpdateReleaseAlert(null)}
-          onOpenAbout={() => {
-            setUpdateReleaseAlert(null);
-            setIsAboutModalOpen(true);
-          }}
-        />
-      )}
-
-      {/* Bottom Status Bar */}
-      {showStatusBar && !isZenMode && (
-        <StatusBar
-          notes={notes}
-          themeMode={settings.themeMode}
-          selectedNoteIds={selectedNoteIds}
-          snapToGrid={settings.snapToGrid}
-          gridType={settings.gridType}
-        />
-      )}
-    </div>
+        </header>
+        <div className="folder-intro"><div className="folder-tab"><Folder size={21} fill="currentColor" /><span>{visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}</span></div><p>{activeFolderId === 'all' ? 'A single, quiet view of everything you have written.' : 'Open a note, write freely, and keep this space focused.'}</p></div>
+        <div className="workspace-body">
+          <section className="note-area" aria-label="Notes">
+            <div className="note-section-heading"><span>Notes</span><button onClick={createNote}><Plus size={15} /> Add page</button></div>
+            {visibleNotes.length ? <div className="note-grid">{visibleNotes.map((note, index) => <button key={note.id} onClick={() => setSelectedNoteId(note.id)} className={`paper-note paper-note-${index % 3} ${selectedNote?.id === note.id ? 'is-selected' : ''}`}>
+              <span className="paper-pin" aria-hidden="true" /><span className="paper-note-top"><span>{note.pinned ? 'PIN' : String(index + 1).padStart(2, '0')}</span><span>{note.locked ? 'LOCKED' : formatDate(note.updatedAt)}</span></span><strong>{note.locked ? 'Locked note' : note.title || 'Untitled note'}</strong><small>{note.locked ? 'Open it from the writing desk.' : snippet(note)}</small><span className="paper-note-bottom"><Hash size={13} /> {workspace.folders.find((folder) => folder.id === note.folderId)?.name}</span>
+            </button>)}</div> : <button className="empty-folder" onClick={createNote}><span className="paper-pin" /><FileText size={24} /><strong>Make the first note here</strong><small>This folder is ready for a thought.</small><span><Plus size={14} /> Create note</span></button>}
+          </section>
+          <aside className="right-rail">
+            <section className="editor-card" aria-label="Note editor"><div className="editor-card-head"><span><BookOpen size={16} /> Writing desk</span>{selectedNote && <div className="editor-actions"><button className={`icon-button ${selectedNote.pinned ? 'is-pressed' : ''}`} onClick={toggleNotePin} title="Pin note" aria-label="Pin note"><Pin size={14} fill={selectedNote.pinned ? 'currentColor' : 'none'} /></button><button className="icon-button" onClick={toggleNoteLock} title="Lock note" aria-label="Lock note"><Shield size={14} /></button><button className="icon-button" onClick={() => setIsPreviewing((open) => !open)} title="Toggle Markdown preview" aria-label="Toggle Markdown preview"><Eye size={15} /></button><button className="icon-button" onClick={exportSelectedNote} title="Export note" aria-label="Export note"><Download size={15} /></button><button className="icon-button danger-button" onClick={deleteSelectedNote} aria-label="Delete note"><Trash2 size={15} /></button></div>}</div>
+              {selectedNote ? selectedNote.locked && !isUnlocked ? <div className="locked-note"><Shield size={22} /><strong>This note is locked.</strong><small>Unlock it locally to view and edit it.</small><button onClick={() => setIsUnlocked(true)}>Unlock note</button></div> : <><input className="note-title-input" value={selectedNote.title} onChange={(event) => updateSelectedNote({ title: event.target.value })} placeholder="Untitled note" aria-label="Note title" /><p className="editor-meta">Last touched {formatDate(selectedNote.updatedAt)} · stored locally</p><div className="tag-row"><Tag size={13} />{(selectedNote.tags ?? []).map((tag) => <button key={tag} onClick={() => removeTag(tag)}>#{tag} ×</button>)}<input value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } }} placeholder="add tag" aria-label="Add tag" /></div>{isPreviewing ? <article className="markdown-preview">{selectedNote.content.split('\n').map((line, index) => <p key={`${line}-${index}`} className={line.startsWith('- [') ? 'checkline' : line.startsWith('#') ? 'headingline' : ''}>{line.startsWith('- [ ]') ? '□ ' + line.slice(6) : line.startsWith('- [x]') ? '☑ ' + line.slice(6) : line}</p>)}</article> : <textarea value={selectedNote.content} onChange={(event) => updateSelectedNote({ content: event.target.value })} placeholder="Begin writing… Use Markdown, - [ ] checklists, and @Note titles." aria-label="Note content" />}</> : <div className="no-note-selected"><FileText size={22} /><span>Select a note to write.</span></div>}
+            </section>
+            <section className="context-card" aria-label="Context finder"><div className="context-head"><span><MessageCircle size={16} /> Ask Inknote</span><span className="local-badge">local context</span></div><p className="context-answer">{contextAnswer}</p>
+              {contextMatches.length > 0 && <div className="context-results">{contextMatches.map((note) => <button key={note.id} onClick={() => selectNote(note)}><FileText size={14} /><span>{note.title || 'Untitled note'}<small>{workspace.folders.find((folder) => folder.id === note.folderId)?.name}</small></span></button>)}</div>}
+              <form className="ask-form" onSubmit={askInknote}><input value={ask} onChange={(event) => setAsk(event.target.value)} placeholder="Ask about your notes" aria-label="Ask about your notes" /><button type="submit" aria-label="Find context"><Send size={15} /></button></form>
+            </section>
+            <section className="workspace-tools" aria-label="Workspace tools"><span><MoreHorizontal size={16} /> Workspace</span><button onClick={exportWorkspace}><Download size={14} /> Export backup</button><button onClick={() => importInputRef.current?.click()}><Upload size={14} /> Import backup</button><input ref={importInputRef} type="file" accept="application/json" onChange={importWorkspace} hidden /></section>
+          </aside>
+        </div>
+      </section>
+    </main>
   );
 }

@@ -11,6 +11,17 @@ Inknote is a local-first, black-and-white note workspace. Notes live inside fold
 - A responsive, reduced-motion-aware interface with smooth, lightweight transitions
 - Browser-local persistence for the initial workspace
 
+## Feature adaptation from DiaryNote
+
+Inknote keeps DiaryNote's note-taking capabilities while intentionally replacing the infinite canvas with a folder-first workflow.
+
+- Markdown and task-list preview
+- Tags, pinned notes, and local session locking
+- Daily journal pages (`Ctrl`/`Cmd` + `Shift` + `J`)
+- Search by title, content, tag, or folder; local context retrieval through Ask Inknote
+- JSON backup import/export and individual Markdown export
+- Trash recovery data and a 30-step workspace undo stack (`Ctrl`/`Cmd` + `Z`)
+
 ## Development
 
 ```bash
