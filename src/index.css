@@ -626,9 +626,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   min-height: 280px;
 }
 
-.note-card.note-size-compact .card-editor-area,
+.note-card.note-size-compact .card-editor-area {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
 .note-card.note-size-regular .card-editor-area {
-  max-height: 220px;
+  min-height: 180px;
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -1716,3 +1721,217 @@ mark {
     grid-column: span 1;
   }
 }
+
+/* TipTap / ProseMirror Table Styles */
+.ProseMirror .tableWrapper,
+.tiptap .tableWrapper,
+.card-rich-editor .tableWrapper {
+  overflow-x: auto;
+  margin: 10px 0;
+  max-width: 100%;
+}
+
+.ProseMirror table,
+.tiptap table,
+.card-rich-editor table,
+table.nt {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 8px 0 !important;
+  white-space: normal !important;
+  display: table !important;
+  --b: rgba(0, 0, 0, 0.2);
+  --head: rgba(0, 0, 0, 0.06);
+  --stripe: rgba(0, 0, 0, 0.03);
+}
+
+.dark .ProseMirror table,
+.dark .tiptap table,
+.dark .card-rich-editor table,
+.dark table.nt {
+  --b: rgba(255, 255, 255, 0.28);
+  --head: rgba(255, 255, 255, 0.1);
+  --stripe: rgba(255, 255, 255, 0.04);
+}
+
+/* Cells */
+.ProseMirror th,
+.ProseMirror td,
+.tiptap th,
+.tiptap td,
+.card-rich-editor th,
+.card-rich-editor td,
+.nt th,
+.nt td {
+  position: relative;
+  padding: 8px 10px !important;
+  vertical-align: top;
+  text-align: left;
+  min-width: 45px;
+  min-height: 32px;
+  border: 1px solid var(--b) !important;
+  box-sizing: border-box;
+  white-space: normal !important;
+  color: var(--text-main);
+}
+
+.ProseMirror th,
+.tiptap th,
+.card-rich-editor th,
+.nt th {
+  background: var(--head) !important;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.ProseMirror td p,
+.ProseMirror th p,
+.tiptap td p,
+.tiptap th p,
+.card-rich-editor td p,
+.card-rich-editor th p,
+.nt p {
+  margin: 0 !important;
+  min-height: 1.3em !important;
+  line-height: 1.4 !important;
+}
+
+/* 6 Table Variants */
+.nt-grid th,
+.nt-grid td {
+  border: 1px solid var(--b) !important;
+}
+
+.nt-striped tbody tr:nth-child(even) td {
+  background: var(--stripe) !important;
+}
+
+.nt-minimal th,
+.nt-minimal td {
+  border: 0 !important;
+  border-bottom: 1px solid var(--b) !important;
+}
+
+.nt-minimal th {
+  background: transparent !important;
+  border-bottom-width: 2px !important;
+}
+
+.nt-borderless th,
+.nt-borderless td {
+  border: 0 !important;
+}
+
+.nt-compact th,
+.nt-compact td {
+  padding: 4px 6px !important;
+  font-size: 0.85em;
+}
+
+.nt-card {
+  border-collapse: separate !important;
+  border-spacing: 0;
+  border: 1px solid var(--b) !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.nt-card th,
+.nt-card td {
+  border: 0 !important;
+  border-bottom: 1px solid var(--b) !important;
+}
+
+.nt-card tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+/* Editing Affordances */
+.ProseMirror .selectedCell::after,
+.tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(90, 140, 255, 0.25);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ProseMirror .column-resize-handle,
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #5a8cff;
+  cursor: col-resize;
+  pointer-events: none;
+}
+
+.ProseMirror.resize-cursor,
+.tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Picker + Toolbar */
+.tp {
+  user-select: none;
+}
+
+.tp-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 18px);
+  gap: 3px;
+}
+
+.tp-grid button {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #444;
+  background: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.tp-grid button.on {
+  background: #5a8cff;
+  border-color: #5a8cff;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 3px;
+  padding: 4px 6px;
+  max-width: 100%;
+}
+
+.table-toolbar button {
+  white-space: nowrap;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.table-toolbar button:hover {
+  background: var(--bg-muted);
+  border-color: var(--border-focus);
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #555;
+  cursor: pointer;
+}
+
+

@@ -43,6 +43,8 @@ import {
 } from 'lucide-react';
 import { NoteItem, FolderItem } from '../types/workspace';
 import { RichTextEditor, RichTextEditorHandle } from './RichTextEditor';
+import { TablePickerPopover } from './TableControls';
+import { BaseMarkdownRenderer } from './NoteCard/BaseMarkdownRenderer';
 import { formatDate, getChecklistProgress } from '../utils/searchEngine';
 
 interface InknoteCardProps {
@@ -660,13 +662,16 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
               >
                 <Link2 size={13} />
               </button>
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => editorRef.current?.applyFormat('table')}
-                title="Insert table"
-              >
-                <Table2 size={13} />
-              </button>
+              <TablePickerPopover
+                editor={editorRef.current?.getEditor?.() ?? null}
+                onInsertTable={(r, c) => {
+                  if (editorRef.current?.insertTable) {
+                    editorRef.current.insertTable(r, c);
+                  } else {
+                    editorRef.current?.applyFormat('table');
+                  }
+                }}
+              />
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleImagePrompt}
@@ -699,60 +704,7 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
           <div className="card-editor-area no-scrollbar">
             {isPreviewing ? (
               <div className="card-markdown-preview no-scrollbar">
-                {currentContent.split('\n').map((line, lineIndex) => {
-                  const match = line.match(/^(\s*[-*+]\s*\[)([ xX])(\]\s*)(.*)$/);
-                  if (match) {
-                    const isCompleted = match[2].toLowerCase() === 'x';
-                    const text = match[4];
-                    return (
-                      <button
-                        key={`checklist-${lineIndex}`}
-                        type="button"
-                        className={`checkline ${isCompleted ? 'is-complete' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleChecklist(lineIndex);
-                        }}
-                      >
-                        {isCompleted ? (
-                          <CheckSquare size={14} className="text-emerald-500" />
-                        ) : (
-                          <Square size={14} className="opacity-40" />
-                        )}
-                        <span>{text}</span>
-                      </button>
-                    );
-                  }
-
-                  const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
-                  if (bulletMatch) {
-                    return (
-                      <div key={`bullet-${lineIndex}`} className="preview-bullet-line">
-                        <span className="bullet-dot">•</span>
-                        <span>{bulletMatch[2]}</span>
-                      </div>
-                    );
-                  }
-
-                  const numMatch = line.match(/^(\s*)(\d+)[\.\)]\s+(.*)$/);
-                  if (numMatch) {
-                    return (
-                      <div key={`num-${lineIndex}`} className="preview-ordered-line">
-                        <span className="ordered-num">{numMatch[2]}.</span>
-                        <span>{numMatch[3]}</span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <p
-                      key={`text-${lineIndex}`}
-                      className={line.startsWith('#') ? 'headingline' : ''}
-                    >
-                      {line}
-                    </p>
-                  );
-                })}
+                <BaseMarkdownRenderer content={currentContent} />
               </div>
             ) : (
               <>
