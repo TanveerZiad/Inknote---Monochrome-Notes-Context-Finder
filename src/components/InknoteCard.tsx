@@ -13,18 +13,33 @@ import {
   Trash2,
   LockKeyhole,
   Heading1,
+  Heading2,
+  Heading3,
+  Pilcrow,
   List,
+  ListOrdered,
+  ListChecks,
   CheckSquare,
   Square,
   Check,
   Bold,
   Italic,
+  Underline,
   Strikethrough,
+  RemoveFormatting,
   Link2,
   Table2,
   X,
   Link,
   GripVertical,
+  Undo2,
+  Redo2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Image,
+  Printer,
+  Highlighter,
 } from 'lucide-react';
 import { NoteItem, FolderItem } from '../types/workspace';
 import { RichTextEditor, RichTextEditorHandle } from './RichTextEditor';
@@ -107,6 +122,33 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
   }, [note.id, onToggleExpand, onUpdate]);
 
   const editorRef = useRef<RichTextEditorHandle | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImagePrompt = useCallback(() => {
+    const choice = window.confirm('Click OK to upload an image from your device, or Cancel to paste an image URL.');
+    if (choice) {
+      fileInputRef.current?.click();
+    } else {
+      const url = window.prompt('Paste image URL:');
+      if (url) {
+        editorRef.current?.insertImage(url);
+      }
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          editorRef.current?.insertImage(reader.result, file.name);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  }, []);
 
   const isLocked = note.locked && !isUnlocked;
   const currentTitle = isUnlocked && unlockedPayload ? unlockedPayload.title : note.title;
@@ -243,8 +285,19 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
           )}
         </div>
 
-        {/* Card Actions: Pin -> Expand/Compact -> More Options */}
+        {/* Card Actions: Formatting -> Pin -> Expand/Compact -> More Options */}
         <div className="card-actions-compact">
+          <button
+            className={`card-btn ${isFormatting ? 'is-active text-blue-500' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsFormatting((prev) => !prev);
+            }}
+            title={isFormatting ? 'Hide formatting tools' : 'Text formatting tools (Bullet points, lists, bold)'}
+            aria-label="Toggle writing tools"
+          >
+            <Type size={14} />
+          </button>
           <button
             className={`card-btn ${note.pinned ? 'is-pinned' : ''}`}
             onClick={(e) => {
@@ -305,6 +358,62 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
               <Type size={14} />
               <span>{isFormatting ? 'Hide formatting bar' : 'Writing tools'}</span>
             </button>
+
+            <div className="dropdown-divider" />
+            <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-subtle)', padding: '3px 10px 1px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Lists & Formatting
+            </div>
+
+            <button
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setIsFormatting(true);
+                editorRef.current?.applyFormat('bullet');
+                setIsMenuOpen(false);
+              }}
+            >
+              <List size={14} />
+              <span>Bullet points</span>
+            </button>
+
+            <button
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setIsFormatting(true);
+                editorRef.current?.applyFormat('number');
+                setIsMenuOpen(false);
+              }}
+            >
+              <ListOrdered size={14} />
+              <span>Numbered list</span>
+            </button>
+
+            <button
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setIsFormatting(true);
+                editorRef.current?.applyFormat('checklist');
+                setIsMenuOpen(false);
+              }}
+            >
+              <ListChecks size={14} />
+              <span>Task checklist</span>
+            </button>
+
+            <button
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                editorRef.current?.applyFormat('clearFormatting');
+                setIsMenuOpen(false);
+              }}
+            >
+              <RemoveFormatting size={14} />
+              <span>Clear formatting</span>
+            </button>
             <button
               className="dropdown-item"
               onClick={() => {
@@ -339,6 +448,27 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
             >
               <Download size={14} />
               <span>Export as Markdown</span>
+            </button>
+            <button
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                handleImagePrompt();
+                setIsMenuOpen(false);
+              }}
+            >
+              <Image size={14} />
+              <span>Insert image</span>
+            </button>
+            <button
+              className="dropdown-item"
+              onClick={() => {
+                editorRef.current?.applyFormat('print');
+                setIsMenuOpen(false);
+              }}
+            >
+              <Printer size={14} />
+              <span>Print note</span>
             </button>
             <div className="dropdown-divider" />
             <button
@@ -388,62 +518,171 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
               className="floating-format-bar"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Undo / Redo */}
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => editorRef.current?.applyFormat('heading')}
-                title="Heading"
+                onClick={() => editorRef.current?.applyFormat('undo')}
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('redo')}
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 size={13} />
+              </button>
+              <i />
+
+              {/* Headings & Paragraph */}
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('h1')}
+                title="Heading 1"
               >
                 <Heading1 size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => editorRef.current?.applyFormat('bullet')}
-                title="Bullet list"
+                onClick={() => editorRef.current?.applyFormat('h2')}
+                title="Heading 2"
               >
-                <List size={13} />
+                <Heading2 size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => editorRef.current?.applyFormat('checklist')}
-                title="Checklist"
+                onClick={() => editorRef.current?.applyFormat('h3')}
+                title="Heading 3"
               >
-                <CheckSquare size={13} />
+                <Heading3 size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('paragraph')}
+                title="Normal text / Paragraph"
+              >
+                <Pilcrow size={13} />
               </button>
               <i />
+
+              {/* Text formatting */}
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => editorRef.current?.applyFormat('bold')}
-                title="Bold"
+                title="Bold (Ctrl+B)"
               >
                 <Bold size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => editorRef.current?.applyFormat('italic')}
-                title="Italic"
+                title="Italic (Ctrl+I)"
               >
                 <Italic size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('underline')}
+                title="Underline (Ctrl+U)"
+              >
+                <Underline size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => editorRef.current?.applyFormat('strikethrough')}
-                title="Strikethrough"
+                title="Strikethrough (Ctrl+Shift+X)"
               >
                 <Strikethrough size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('highlight')}
+                title="Highlight text (Ctrl+Shift+H)"
+              >
+                <Highlighter size={13} />
+              </button>
+              <i />
+
+              {/* Alignments */}
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('alignLeft')}
+                title="Align left"
+              >
+                <AlignLeft size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('alignCenter')}
+                title="Align center"
+              >
+                <AlignCenter size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('alignRight')}
+                title="Align right"
+              >
+                <AlignRight size={13} />
+              </button>
+              <i />
+
+              {/* Dedicated List Controls */}
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('bullet')}
+                title="Bulleted list"
+              >
+                <List size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('number')}
+                title="Numbered list"
+              >
+                <ListOrdered size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('checklist')}
+                title="Task list / Checklist"
+              >
+                <ListChecks size={13} />
+              </button>
+              <i />
+
+              {/* Insert Link, Table & Image */}
+              <button
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => editorRef.current?.applyFormat('link')}
-                title="Link"
+                title="Insert link"
               >
                 <Link2 size={13} />
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => editorRef.current?.applyFormat('table')}
-                title="Table"
+                title="Insert table"
               >
                 <Table2 size={13} />
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleImagePrompt}
+                title="Insert or Upload Image"
+              >
+                <Image size={13} />
+              </button>
+              <i />
+
+              {/* Clear Formatting */}
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editorRef.current?.applyFormat('clearFormatting')}
+                title="Clear formatting (Ctrl+\)"
+              >
+                <RemoveFormatting size={13} />
               </button>
               <i />
               <button
@@ -484,6 +723,27 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
                       </button>
                     );
                   }
+
+                  const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+                  if (bulletMatch) {
+                    return (
+                      <div key={`bullet-${lineIndex}`} className="preview-bullet-line">
+                        <span className="bullet-dot">•</span>
+                        <span>{bulletMatch[2]}</span>
+                      </div>
+                    );
+                  }
+
+                  const numMatch = line.match(/^(\s*)(\d+)[\.\)]\s+(.*)$/);
+                  if (numMatch) {
+                    return (
+                      <div key={`num-${lineIndex}`} className="preview-ordered-line">
+                        <span className="ordered-num">{numMatch[2]}.</span>
+                        <span>{numMatch[3]}</span>
+                      </div>
+                    );
+                  }
+
                   return (
                     <p
                       key={`text-${lineIndex}`}
@@ -496,6 +756,13 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
               </div>
             ) : (
               <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
                 <RichTextEditor
                   ref={editorRef}
                   content={currentContent}

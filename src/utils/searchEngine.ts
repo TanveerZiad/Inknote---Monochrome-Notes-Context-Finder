@@ -91,10 +91,11 @@ export function getChecklistProgress(content: string): {
   percent: number;
 } | null {
   if (!content) return null;
-  const matches = content.match(/^\s*[-*+]\s*\[([ xX])\]/gm);
-  if (!matches || matches.length === 0) return null;
-  const total = matches.length;
-  const completed = matches.filter((m) => /\[[xX]\]/.test(m)).length;
+  const lines = content.split('\n');
+  const taskLines = lines.filter((l) => /^\s*[-*+]\s*\[([ xX])\]\s*\S+/.test(l));
+  if (taskLines.length === 0) return null;
+  const total = taskLines.length;
+  const completed = taskLines.filter((l) => /\[[xX]\]/.test(l)).length;
   const percent = Math.round((completed / total) * 100);
   return { total, completed, percent };
 }

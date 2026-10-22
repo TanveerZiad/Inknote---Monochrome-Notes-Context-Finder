@@ -52,6 +52,28 @@ export function markdownToHtml(rawMarkdown: string): string {
       continue;
     }
 
+    // Task / Checklist item: - [ ] item or - [x] item
+    const taskMatch = line.match(/^(\s*)[-*+]\s+\[([ xX])\]\s*(.*)$/);
+    if (taskMatch) {
+      if (!inList || listTag !== 'ul') {
+        if (inList) htmlParts.push(`</${listTag}>`);
+        htmlParts.push('<ul class="task-list">');
+        inList = true;
+        listTag = 'ul';
+      }
+      const isChecked = taskMatch[2].toLowerCase() === 'x';
+      const text = taskMatch[3].trim();
+      htmlParts.push(
+        `<li class="task-item${isChecked ? ' is-completed' : ''}" data-task="true" data-checked="${isChecked}">` +
+          `<span contenteditable="false" class="task-checkbox-wrapper">` +
+            `<input type="checkbox" ${isChecked ? 'checked' : ''} class="task-checkbox" />` +
+          `</span>` +
+          `<span class="task-text">${formatInline(text) || '<br>'}</span>` +
+        `</li>`
+      );
+      continue;
+    }
+
     // Bullet list: - item or * item
     const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
     if (bulletMatch) {
@@ -78,6 +100,40 @@ export function markdownToHtml(rawMarkdown: string): string {
       continue;
     }
 
+    // Table: | col1 | col2 |
+    const tableRowMatch = line.trim().match(/^\|(.+)\|$/);
+    if (tableRowMatch) {
+      if (inList) {
+        htmlParts.push(`</${listTag}>`);
+        inList = false;
+      }
+      const rows: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].trim().match(/^\|(.+)\|$/)) {
+        rows.push(lines[++i]);
+      }
+      if (rows.length >= 2 && rows[1].includes('-')) {
+        const parseRow = (r: string) =>
+          r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+        const headerCells = parseRow(rows[0]);
+        let tableHtml = '<div class="table-wrapper"><table class="editor-table"><thead><tr>';
+        headerCells.forEach((c) => {
+          tableHtml += `<th>${formatInline(c)}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+        for (let r = 2; r < rows.length; r++) {
+          tableHtml += '<tr>';
+          const cells = parseRow(rows[r]);
+          cells.forEach((c) => {
+            tableHtml += `<td>${formatInline(c)}</td>`;
+          });
+          tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table></div>';
+        htmlParts.push(tableHtml);
+        continue;
+      }
+    }
+
     // Close any open list
     if (inList) {
       htmlParts.push(`</${listTag}>`);
@@ -88,7 +144,12 @@ export function markdownToHtml(rawMarkdown: string): string {
     if (line.trim() === '') {
       htmlParts.push('<p><br></p>');
     } else {
-      htmlParts.push(`<p>${formatInline(line)}</p>`);
+      const alignMatch = line.match(/^<p align="(left|center|right|justify)">(.*?)<\/p>$/i);
+      if (alignMatch) {
+        htmlParts.push(`<p style="text-align: ${alignMatch[1]}">${formatInline(alignMatch[2])}</p>`);
+      } else {
+        htmlParts.push(`<p>${formatInline(line)}</p>`);
+      }
     }
   }
 
@@ -112,14 +173,28 @@ function formatInline(text: string): string {
   res = res.replace(/(\*)(.*?)\1/g, '<em>$2</em>');
   res = res.replace(/(^|\s|\W)_(.*?)_($|\s|\W)/g, '$1<em>$2</em>$3');
 
+  // Underline (<u>text</u> or <ins>text</ins>)
+  res = res.replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/gi, '<u>$1</u>');
+  res = res.replace(/&lt;ins&gt;(.*?)&lt;\/ins&gt;/gi, '<u>$1</u>');
+
   // Strikethrough (~~text~~)
   res = res.replace(/~~(.*?)~~/g, '<s>$1</s>');
+
+  // Highlight (==text== or <mark>text</mark>)
+  res = res.replace(/==(.*?)==/g, '<mark>$1</mark>');
+  res = res.replace(/&lt;mark&gt;(.*?)&lt;\/mark&gt;/gi, '<mark>$1</mark>');
 
   // Code (`code`)
   res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
 
+  // Images (![alt](url)) - parsed before Links
+  res = res.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="editor-inline-image" />');
+
   // Links ([text](url))
   res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  // Autolink bare URLs (not already part of an href or src)
+  res = res.replace(/(^|[\s(])(https?:\/\/[^\s)<>"]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
 
   return res;
 }
@@ -155,6 +230,11 @@ export function htmlToMarkdown(root: HTMLElement): string {
         tag === 'i' ||
         el.style.fontStyle === 'italic';
 
+      const isUnderline =
+        tag === 'u' ||
+        tag === 'ins' ||
+        el.style.textDecoration.includes('underline');
+
       const isStrike =
         tag === 's' ||
         tag === 'del' ||
@@ -175,6 +255,14 @@ export function htmlToMarkdown(root: HTMLElement): string {
         const trailing = childText.match(/\s*$/)?.[0] || '';
         const trimmed = childText.slice(leading.length, childText.length - trailing.length);
         return `${leading}*${trimmed}*${trailing}`;
+      }
+
+      if (isUnderline && !parentTags.includes('u') && !parentTags.includes('ins')) {
+        if (!childText.trim()) return childText;
+        const leading = childText.match(/^\s*/)?.[0] || '';
+        const trailing = childText.match(/\s*$/)?.[0] || '';
+        const trimmed = childText.slice(leading.length, childText.length - trailing.length);
+        return `${leading}<u>${trimmed}</u>${trailing}`;
       }
 
       if (isStrike && !parentTags.includes('s') && !parentTags.includes('del') && !parentTags.includes('strike')) {
@@ -215,6 +303,32 @@ export function htmlToMarkdown(root: HTMLElement): string {
           return `###### ${childText.trim()}\n\n`;
         }
         case 'li': {
+          const checkbox = el.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+          const isTask = el.getAttribute('data-task') === 'true' || el.classList.contains('task-item') || !!checkbox;
+
+          if (isTask) {
+            const isChecked = checkbox ? checkbox.checked : el.getAttribute('data-checked') === 'true';
+            const taskTextEl = el.querySelector('.task-text') as HTMLElement | null;
+            let text = '';
+            if (taskTextEl) {
+              text = serializeNode(taskTextEl, currentTags).trim();
+            } else {
+              const textParts: string[] = [];
+              el.childNodes.forEach((child) => {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                  const chel = child as HTMLElement;
+                  if (chel.tagName.toLowerCase() === 'input' || chel.classList.contains('task-checkbox-wrapper')) {
+                    return;
+                  }
+                }
+                textParts.push(serializeNode(child, currentTags));
+              });
+              text = textParts.join('').trim();
+            }
+            const cleanText = text.replace(/^[-\*\+]\s*\[[ xX]\]\s*/, '').replace(/^\[[ xX]\]\s*/, '');
+            return `- [${isChecked ? 'x' : ' '}] ${cleanText}\n`;
+          }
+
           const trimmed = childText.trim();
           if (trimmed.startsWith('- [ ] ') || trimmed.startsWith('- [x] ') || trimmed.startsWith('- [X] ')) {
             return `${trimmed}\n`;
@@ -222,16 +336,63 @@ export function htmlToMarkdown(root: HTMLElement): string {
           if (trimmed.startsWith('[ ] ') || trimmed.startsWith('[x] ') || trimmed.startsWith('[X] ')) {
             return `- ${trimmed}\n`;
           }
+
+          const parentTag = parentTags[parentTags.length - 2] || (el.parentElement?.tagName.toLowerCase());
+          if (parentTag === 'ol') {
+            let index = 1;
+            if (el.parentElement) {
+              const liSiblings = Array.from(el.parentElement.children).filter((c) => c.tagName.toLowerCase() === 'li');
+              const idx = liSiblings.indexOf(el);
+              if (idx !== -1) index = idx + 1;
+            }
+            return `${index}. ${trimmed}\n`;
+          }
+
           return `- ${trimmed}\n`;
         }
         case 'ul':
         case 'ol': {
-          return `${childText.trim()}\n\n`;
+          const trimmed = childText.trim();
+          return trimmed ? `${trimmed}\n\n` : '';
+        }
+        case 'table': {
+          const rows = Array.from(el.querySelectorAll('tr'));
+          if (rows.length === 0) return '';
+          const markdownRows: string[] = [];
+          rows.forEach((row, rowIndex) => {
+            const cells = Array.from(row.querySelectorAll('th, td'));
+            const cellTexts = cells.map((cell) => serializeNode(cell, currentTags).trim().replace(/\n/g, ' '));
+            markdownRows.push(`| ${cellTexts.join(' | ')} |`);
+            if (rowIndex === 0) {
+              markdownRows.push(`| ${cells.map(() => '---').join(' | ')} |`);
+            }
+          });
+          return `${markdownRows.join('\n')}\n\n`;
+        }
+        case 'th':
+        case 'td': {
+          return childText.trim();
+        }
+        case 'mark': {
+          if (!childText.trim()) return childText;
+          const leading = childText.match(/^\s*/)?.[0] || '';
+          const trailing = childText.match(/\s*$/)?.[0] || '';
+          const trimmed = childText.slice(leading.length, childText.length - trailing.length);
+          return `${leading}==${trimmed}==${trailing}`;
+        }
+        case 'img': {
+          const src = el.getAttribute('src') || '';
+          const alt = el.getAttribute('alt') || 'image';
+          return `![${alt}](${src})\n\n`;
         }
         case 'p':
         case 'div': {
           if (childText === '' || childText === '<br>' || childText === '\n') {
             return '\n';
+          }
+          const align = el.style.textAlign || el.getAttribute('align');
+          if (align && align !== 'left' && align !== 'start') {
+            return `<p align="${align}">${childText.trim()}</p>\n\n`;
           }
           return `${childText}\n`;
         }
