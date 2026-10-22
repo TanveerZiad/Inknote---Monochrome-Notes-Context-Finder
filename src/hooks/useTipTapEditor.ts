@@ -1,5 +1,6 @@
 import { useEditor, type UseEditorOptions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { Image } from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
 import { CustomTable, CustomHeader, CustomCell, TableRow, migrateNote, VARIANTS, type TableVariant } from '../tables';
 
@@ -17,6 +18,10 @@ export const defaultTableExtensions = [
   Markdown.configure({
     html: true,
     transformPastedText: true,
+  }),
+  Image.configure({
+    allowBase64: true,
+    inline: false,
   }),
   CustomTable.configure({
     resizable: true,

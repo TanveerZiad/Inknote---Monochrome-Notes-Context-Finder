@@ -19,12 +19,15 @@ export type TableVariant = (typeof VARIANTS)[number]
 export const COLORS = ['#3b2f2f', '#2f3b2f', '#2f2f3b', '#3b3b2f', '#3b2f3b', null] as const
 
 export const looksLikeTable = (s: string) => /^\s*\|.+\|\s*\n\s*\|[\s:|-]+\|/m.test(s)
+export const containsRawImageTag = (s: string) => /<img[\s\S]*?src=["'][^"']+["']/i.test(s)
 
 export function migrateNote(plainText: string): string {
   if (!plainText) return plainText
-  if (!looksLikeTable(plainText)) return plainText
-  const parsed = marked.parse(plainText, { gfm: true })
-  return typeof parsed === 'string' ? parsed : plainText
+  if (looksLikeTable(plainText) || containsRawImageTag(plainText)) {
+    const parsed = marked.parse(plainText, { gfm: true })
+    return typeof parsed === 'string' ? parsed : plainText
+  }
+  return plainText
 }
 
 const bgAttr = {

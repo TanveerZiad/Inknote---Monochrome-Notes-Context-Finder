@@ -11,6 +11,7 @@ import { Underline } from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
+import { Image } from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
 import { CustomTable, CustomHeader, CustomCell, TableRow, migrateNote } from '../tables';
 import { TableToolbar } from './TableControls';
@@ -102,6 +103,13 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         Markdown.configure({
           html: true,
           transformPastedText: true,
+        }),
+        Image.configure({
+          allowBase64: true,
+          inline: false,
+          HTMLAttributes: {
+            class: 'editor-inline-image max-w-full rounded-lg my-2 border border-[var(--border-subtle)]',
+          },
         }),
         CustomTable.configure({
           resizable: true,
@@ -212,7 +220,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           case 'image': {
             const url = window.prompt('Paste image URL:');
             if (url) {
-              chain.insertContent(`\n![image](${url})\n`).run();
+              chain.setImage({ src: url }).run();
             }
             break;
           }
@@ -238,7 +246,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           editor?.commands.insertContent(text);
         },
         insertImage: (url: string, alt = 'image') => {
-          editor?.commands.insertContent(`\n![${alt}](${url})\n`);
+          editor?.chain().focus().setImage({ src: url, alt }).run();
         },
         insertTable: (rows = 3, cols = 3) => {
           editor?.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
