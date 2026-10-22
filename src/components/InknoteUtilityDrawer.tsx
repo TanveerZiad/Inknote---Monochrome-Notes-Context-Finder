@@ -7,8 +7,16 @@ import {
   Download,
   Upload,
   GitBranch,
+  FolderOpen,
+  Folder,
+  HardDrive,
+  RefreshCw,
+  Copy,
+  Check,
+  FolderCheck,
 } from 'lucide-react';
 import { NoteItem, Workspace, NoteRevision } from '../types/workspace';
+import { VaultStatus } from '../lib/vaultBackend';
 
 interface InknoteUtilityDrawerProps {
   isOpen: boolean;
@@ -29,6 +37,11 @@ interface InknoteUtilityDrawerProps {
   onExportWorkspace: () => void;
   onImportWorkspaceFile: (file: File) => void;
   onEnableGitBackup: () => void;
+  vaultStatus?: VaultStatus;
+  isVaultSyncing?: boolean;
+  onOpenVaultFolder?: () => void;
+  onRescanVault?: () => void;
+  onChangeVaultDirectory?: (newPath: string) => void;
 }
 
 const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
@@ -50,8 +63,16 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
   onExportWorkspace,
   onImportWorkspaceFile,
   onEnableGitBackup,
+  vaultStatus,
+  isVaultSyncing,
+  onOpenVaultFolder,
+  onRescanVault,
+  onChangeVaultDirectory,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [customPath, setCustomPath] = React.useState('');
+  const [isChangingPath, setIsChangingPath] = React.useState(false);
+  const [copiedPath, setCopiedPath] = React.useState(false);
 
   if (!isOpen) return null;
 
@@ -401,21 +422,133 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
             </div>
           )}
 
-          {/* 4. Sync & Backup Tab */}
+          {/* 4. Sync & Local Vault Tab */}
           {tab === 'sync' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Local Filesystem Vault Card */}
+              <div className="vault-config-card">
+                <div className="vault-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <HardDrive size={18} className="text-main" />
+                    <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                      Local Folder Vault
+                    </h3>
+                  </div>
+                  <span className={`vault-badge ${vaultStatus?.connected ? 'is-connected' : 'is-pending'}`}>
+                    <span className="dot" />
+                    {vaultStatus?.connected ? 'Folder Active' : 'Connecting'}
+                  </span>
+                </div>
+
+                <p style={{ margin: '8px 0 12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                  All files stay 100% intact as readable Markdown (<code>.md</code>) documents organized inside folders on your local drive. You can view, open, and edit them directly from Windows Explorer, Notepad, or Obsidian.
+                </p>
+
+                {/* Directory path box */}
+                <div className="vault-path-box">
+                  <span className="vault-path-text" title={vaultStatus?.vaultPath}>
+                    {vaultStatus?.vaultPath || 'Locating vault folder...'}
+                  </span>
+                  <button
+                    className="tiny-action"
+                    onClick={() => {
+                      if (vaultStatus?.vaultPath) {
+                        navigator.clipboard.writeText(vaultStatus.vaultPath);
+                        setCopiedPath(true);
+                        setTimeout(() => setCopiedPath(false), 2000);
+                      }
+                    }}
+                    title="Copy folder path"
+                    aria-label="Copy folder path"
+                  >
+                    {copiedPath ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                  </button>
+                </div>
+
+                {/* Primary Actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
+                  <button
+                    className="btn-primary"
+                    onClick={onOpenVaultFolder}
+                    style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <FolderOpen size={16} />
+                    <span>Open Notes Folder in File Explorer</span>
+                  </button>
+
+                  <button
+                    className="btn-secondary"
+                    onClick={onRescanVault}
+                    disabled={isVaultSyncing}
+                    style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <RefreshCw size={14} className={isVaultSyncing ? 'animate-spin' : ''} />
+                    <span>{isVaultSyncing ? 'Scanning files on disk...' : 'Rescan from Disk Folder'}</span>
+                  </button>
+                </div>
+
+                {/* Custom Folder Switcher */}
+                <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                  {!isChangingPath ? (
+                    <button
+                      className="tiny-link-btn"
+                      onClick={() => {
+                        setCustomPath(vaultStatus?.vaultPath || '');
+                        setIsChangingPath(true);
+                      }}
+                    >
+                      Change notes folder path...
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        Enter custom absolute folder path:
+                      </span>
+                      <input
+                        className="vault-custom-input"
+                        value={customPath}
+                        onChange={(e) => setCustomPath(e.target.value)}
+                        placeholder="e.g. C:\Users\User\Documents\Notes"
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="btn-primary"
+                          style={{ height: '30px', fontSize: '11px', flex: 1, justifyContent: 'center' }}
+                          onClick={() => {
+                            if (customPath.trim() && onChangeVaultDirectory) {
+                              onChangeVaultDirectory(customPath.trim());
+                              setIsChangingPath(false);
+                            }
+                          }}
+                        >
+                          Apply Folder
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          style={{ height: '30px', fontSize: '11px' }}
+                          onClick={() => setIsChangingPath(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Backups & Portability */}
               <div>
                 <h3 style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 700 }}>
-                  Backup & Sync
+                  Backups & Snapshots
                 </h3>
                 <p
                   style={{
-                    margin: '0 0 14px',
+                    margin: '0 0 12px',
                     fontSize: '12px',
                     color: 'var(--text-muted)',
                   }}
                 >
-                  All your data lives locally in your browser storage.
+                  Create portable JSON snapshots for archiving or moving between machines.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <button
@@ -424,7 +557,7 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                     style={{ justifyContent: 'flex-start', gap: '8px' }}
                   >
                     <Download size={15} />
-                    <span>Download backup (.json)</span>
+                    <span>Download JSON Snapshot</span>
                   </button>
                   <button
                     className="btn-secondary"
@@ -432,7 +565,7 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                     style={{ justifyContent: 'flex-start', gap: '8px' }}
                   >
                     <Upload size={15} />
-                    <span>Import backup (.json)</span>
+                    <span>Import JSON Snapshot</span>
                   </button>
                   <button
                     className="btn-secondary"
@@ -440,7 +573,7 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                     style={{ justifyContent: 'flex-start', gap: '8px' }}
                   >
                     <GitBranch size={15} />
-                    <span>Enable Git sync backup</span>
+                    <span>Enable Git version sync</span>
                   </button>
                   <input
                     ref={fileInputRef}
@@ -458,15 +591,17 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                 </div>
               </div>
 
+              {/* Workspace Statistics */}
               <div
                 style={{
                   padding: '14px',
                   background: 'var(--bg-muted)',
                   borderRadius: '10px',
                   fontSize: '12px',
+                  border: '1px solid var(--border-subtle)',
                 }}
               >
-                <b>Workspace Statistics</b>
+                <b>Workspace & Disk Storage</b>
                 <div
                   style={{
                     marginTop: '8px',
@@ -476,7 +611,7 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                     color: 'var(--text-muted)',
                   }}
                 >
-                  <div>Total Notes: {workspace.notes.length}</div>
+                  <div>Notes on Disk: {workspace.notes.length}</div>
                   <div>Folders: {workspace.folders.length}</div>
                   <div>
                     Actionable tasks:{' '}
@@ -485,7 +620,14 @@ const InknoteUtilityDrawerComponent: React.FC<InknoteUtilityDrawerProps> = ({
                         .length
                     }
                   </div>
-                  <div>Storage: Local-First</div>
+                  <div>
+                    Sync Status: {vaultStatus?.connected ? 'Live Local Files' : 'Browser Storage'}
+                  </div>
+                  {vaultStatus?.lastSyncedAt && (
+                    <div style={{ gridColumn: 'span 2', fontSize: '11px', color: 'var(--text-subtle)' }}>
+                      Last synced to disk: {vaultStatus.lastSyncedAt}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

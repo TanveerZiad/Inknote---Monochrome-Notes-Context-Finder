@@ -1,6 +1,17 @@
-import { useState, useMemo, useCallback, FormEvent, ChangeEvent } from 'react';
+import { useState, useMemo, useCallback, FormEvent, ChangeEvent, useEffect, useRef } from 'react';
 import { Workspace, FolderItem, NoteItem, NoteRevision } from '../types/workspace';
 import { makeId, dateKey, formatDate, downloadFile, semanticScore, snippet } from '../utils/searchEngine';
+import {
+  checkVaultStatus,
+  loadVaultWorkspace,
+  saveVaultNote,
+  deleteVaultNote,
+  deleteVaultFolder,
+  saveVaultWorkspace,
+  openVaultInExplorer,
+  setVaultDirectory,
+  VaultStatus,
+} from '../lib/vaultBackend';
 
 const STORAGE_KEY = 'inknote-workspace-v1';
 
@@ -81,7 +92,64 @@ export function useInknoteWorkspace(
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
 
-  // Commit wrapper that synchronizes history snapshot
+  // Local Folder Vault State
+  const [vaultStatus, setVaultStatus] = useState<VaultStatus>({
+    connected: false,
+    vaultPath: '',
+    notesCount: 0,
+    foldersCount: 0,
+    storageType: 'browser-fallback',
+  });
+  const [isVaultSyncing, setIsVaultSyncing] = useState(false);
+  const latestWorkspaceRef = useRef<Workspace>(workspace);
+  latestWorkspaceRef.current = workspace;
+  const saveTimersRef = useRef<Map<string, any>>(new Map());
+
+  // Mount effect to check vault status and load from local folder if present
+  useEffect(() => {
+    let isMounted = true;
+    async function initVault() {
+      setIsVaultSyncing(true);
+      const status = await checkVaultStatus();
+      if (!isMounted) return;
+      setVaultStatus(status);
+
+      if (status.connected) {
+        const vaultWs = await loadVaultWorkspace();
+        if (!isMounted) return;
+        if (vaultWs && Array.isArray(vaultWs.notes) && vaultWs.notes.length > 0) {
+          setWorkspace(vaultWs);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultWs));
+          } catch {}
+          setVaultStatus((prev) => ({
+            ...prev,
+            notesCount: vaultWs.notes.length,
+            foldersCount: vaultWs.folders.length,
+            lastSyncedAt: new Date().toLocaleTimeString(),
+          }));
+        } else if (workspace.notes.length > 0) {
+          await saveVaultWorkspace(workspace);
+          for (const note of workspace.notes) {
+            await saveVaultNote(note, workspace.folders);
+          }
+          setVaultStatus((prev) => ({
+            ...prev,
+            notesCount: workspace.notes.length,
+            foldersCount: workspace.folders.length,
+            lastSyncedAt: new Date().toLocaleTimeString(),
+          }));
+        }
+      }
+      setIsVaultSyncing(false);
+    }
+    initVault();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Commit wrapper that synchronizes history snapshot and local vault backend
   const commitWorkspace = useCallback(
     (next: Workspace) => {
       pushSnapshot(workspace, true);
@@ -91,8 +159,11 @@ export function useInknoteWorkspace(
       } catch (err) {
         console.error('Failed to save to localStorage:', err);
       }
+      if (vaultStatus.connected) {
+        saveVaultWorkspace(next);
+      }
     },
-    [pushSnapshot, workspace]
+    [pushSnapshot, workspace, vaultStatus.connected]
   );
 
   // Hierarchical folders
@@ -251,6 +322,51 @@ export function useInknoteWorkspace(
     [commitWorkspace, draggedFolderId, workspace]
   );
 
+  const deleteFolder = useCallback(
+    (id: string) => {
+      if (workspace.folders.length <= 1) {
+        alert('You must have at least one folder in your workspace.');
+        return;
+      }
+      const targetFolder = workspace.folders.find((f) => f.id === id);
+      if (!targetFolder) return;
+
+      const allSubFolderIds = new Set<string>([id]);
+      let added = true;
+      while (added) {
+        added = false;
+        for (const f of workspace.folders) {
+          if (f.parentId && allSubFolderIds.has(f.parentId) && !allSubFolderIds.has(f.id)) {
+            allSubFolderIds.add(f.id);
+            added = true;
+          }
+        }
+      }
+
+      const notesToTrash = workspace.notes.filter((n) => allSubFolderIds.has(n.folderId));
+      const remainingNotes = workspace.notes.filter((n) => !allSubFolderIds.has(n.folderId));
+      const remainingFolders = workspace.folders.filter((f) => !allSubFolderIds.has(f.id));
+
+      if (allSubFolderIds.has(activeFolderId)) {
+        setActiveFolderId(remainingFolders[0]?.id || 'all');
+      }
+
+      const nextWorkspace: Workspace = {
+        ...workspace,
+        folders: remainingFolders,
+        notes: remainingNotes,
+        trash: [...notesToTrash, ...(workspace.trash ?? [])],
+      };
+
+      commitWorkspace(nextWorkspace);
+
+      if (vaultStatus.connected) {
+        deleteVaultFolder(id, workspace.folders);
+      }
+    },
+    [activeFolderId, commitWorkspace, vaultStatus.connected, workspace]
+  );
+
   // Note Operations
   const createNote = useCallback(
     (customTemplate?: { title?: string; content?: string; tags?: string[] }) => {
@@ -281,8 +397,11 @@ export function useInknoteWorkspace(
       commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
       setActiveFolderId(folderId);
       setSelectedNoteId(note.id);
+      if (vaultStatus.connected) {
+        saveVaultNote(note, workspace.folders);
+      }
     },
-    [activeFolderId, commitWorkspace, folders, showTasksOnly, workspace]
+    [activeFolderId, commitWorkspace, folders, showTasksOnly, vaultStatus.connected, workspace]
   );
 
   const updateNote = useCallback(
@@ -322,10 +441,27 @@ export function useInknoteWorkspace(
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         } catch {}
+
+        // Debounce disk file write (300ms) so all changes stay intact in real files
+        if (vaultStatus.connected && target) {
+          const oldTimer = saveTimersRef.current.get(id);
+          if (oldTimer) clearTimeout(oldTimer);
+          const oldTitle = target.title;
+          const oldFolderId = target.folderId;
+          const timer = setTimeout(() => {
+            const currentNote = latestWorkspaceRef.current.notes.find((n) => n.id === id);
+            if (currentNote) {
+              saveVaultNote(currentNote, latestWorkspaceRef.current.folders, oldTitle, oldFolderId);
+            }
+            saveTimersRef.current.delete(id);
+          }, 300);
+          saveTimersRef.current.set(id, timer);
+        }
+
         return next;
       });
     },
-    [pushSnapshot]
+    [pushSnapshot, vaultStatus.connected]
   );
 
   const deleteNote = useCallback(
@@ -338,8 +474,13 @@ export function useInknoteWorkspace(
       if (selectedNoteId === note.id) {
         setSelectedNoteId(visibleNotes.find((item) => item.id !== note.id)?.id ?? '');
       }
+      if (vaultStatus.connected) {
+        const oldTimer = saveTimersRef.current.get(note.id);
+        if (oldTimer) clearTimeout(oldTimer);
+        deleteVaultNote(note.id, note.folderId, note.title, workspace.folders);
+      }
     },
-    [commitWorkspace, selectedNoteId, visibleNotes, workspace]
+    [commitWorkspace, selectedNoteId, vaultStatus.connected, visibleNotes, workspace]
   );
 
   const togglePinNote = useCallback(
@@ -592,6 +733,7 @@ export function useInknoteWorkspace(
     togglePinFolder,
     moveFolder,
     reorderFolder,
+    deleteFolder,
     createNote,
     updateNote,
     deleteNote,
@@ -608,5 +750,46 @@ export function useInknoteWorkspace(
     contextAnswer,
     askInknote,
     saveContextAnswer,
+    // Local Vault Support
+    vaultStatus,
+    isVaultSyncing,
+    openVaultFolder: async () => {
+      return await openVaultInExplorer(vaultStatus.vaultPath);
+    },
+    rescanVault: async () => {
+      setIsVaultSyncing(true);
+      const vaultWs = await loadVaultWorkspace();
+      if (vaultWs && Array.isArray(vaultWs.notes)) {
+        setWorkspace(vaultWs);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultWs));
+        } catch {}
+        setVaultStatus((prev) => ({
+          ...prev,
+          notesCount: vaultWs.notes.length,
+          foldersCount: vaultWs.folders.length,
+          lastSyncedAt: new Date().toLocaleTimeString(),
+        }));
+      }
+      setIsVaultSyncing(false);
+    },
+    changeVaultDirectory: async (newPath: string) => {
+      setIsVaultSyncing(true);
+      const res = await setVaultDirectory(newPath);
+      if (res.ok && res.vaultPath) {
+        setVaultStatus((prev) => ({
+          ...prev,
+          vaultPath: res.vaultPath!,
+        }));
+        const vaultWs = await loadVaultWorkspace();
+        if (vaultWs && Array.isArray(vaultWs.notes)) {
+          setWorkspace(vaultWs);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultWs));
+          } catch {}
+        }
+      }
+      setIsVaultSyncing(false);
+    },
   };
 }

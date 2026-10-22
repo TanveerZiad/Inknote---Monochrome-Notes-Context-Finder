@@ -1,0 +1,372 @@
+{
+  "folders": [
+    {
+      "id": "inbox",
+      "name": "Inbox",
+      "pinned": true,
+      "priority": 2
+    },
+    {
+      "id": "projects",
+      "name": "Projects",
+      "pinned": true,
+      "priority": 1
+    },
+    {
+      "id": "inknote",
+      "name": "Inknote",
+      "parentId": "projects",
+      "pinned": false,
+      "priority": 2
+    },
+    {
+      "id": "journal",
+      "name": "Journal",
+      "pinned": false,
+      "priority": 0
+    },
+    {
+      "id": "references",
+      "name": "References",
+      "pinned": false,
+      "priority": 1
+    },
+    {
+      "id": "folder-4bbd8f4e-0e0e-45dc-9579-8e188e085ea9",
+      "name": "GUCC",
+      "parentId": "inbox",
+      "pinned": true,
+      "priority": 0
+    },
+    {
+      "id": "folder-d05456a9-d98b-45d1-ae1f-2c430248404a",
+      "name": "rljn",
+      "parentId": "inbox",
+      "pinned": false,
+      "priority": 5
+    },
+    {
+      "id": "folder-a8b407d5-0134-43c3-af52-42ec43daddbc",
+      "name": "hello",
+      "parentId": "folder-4bbd8f4e-0e0e-45dc-9579-8e188e085ea9",
+      "pinned": false,
+      "priority": 4
+    },
+    {
+      "id": "folder-2f662b38-81d2-4d3c-ab5f-de3d554da485",
+      "name": "ki",
+      "parentId": "inbox",
+      "pinned": false,
+      "priority": 6
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision-07a73ec6-d4d0-4457-a048-6c8486693a9c",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n- [ ] Write down great ideas\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-22T15:33:12.292Z"
+    },
+    {
+      "id": "revision-1453f43a-212a-4fe0-a7b9-7ccf12893997",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:25.587Z"
+    },
+    {
+      "id": "revision-087fbc21-b13c-4409-ad4a-c2c06c6526b8",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "h",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:25.869Z"
+    },
+    {
+      "id": "revision-97f342e9-e3ce-4c2c-bed8-f4c9a898071c",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "he",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:26.100Z"
+    },
+    {
+      "id": "revision-0aa260ca-ab65-4d02-a83d-82b788911791",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:26.264Z"
+    },
+    {
+      "id": "revision-5d2e5ae4-1d49-43f8-b5a4-566ed9b9df21",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:26.340Z"
+    },
+    {
+      "id": "revision-d98a6469-5fc9-4202-b111-8f0e559b12b3",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her e",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:26.636Z"
+    },
+    {
+      "id": "revision-1c763f4a-b5be-4717-b676-36e0e45249e4",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:27.004Z"
+    },
+    {
+      "id": "revision-ddc6a0b4-98b6-465d-b0ed-73e8d138f9e6",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei ",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:27.171Z"
+    },
+    {
+      "id": "revision-68770f20-2b76-4854-8356-ba6beffb6618",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei w",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:27.348Z"
+    },
+    {
+      "id": "revision-2b9dda97-8d47-4ddf-a018-c8d14d2a112f",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei wi",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:27.604Z"
+    },
+    {
+      "id": "revision-d4009119-7ed4-43b2-8b47-c0f434defaf6",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei wil",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:27.795Z"
+    },
+    {
+      "id": "revision-d45cde76-b26f-4507-870d-c8cf95d1220a",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:28.012Z"
+    },
+    {
+      "id": "revision-bbe5ee10-2cef-41c0-819d-f299f778e7cb",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will ",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:28.740Z"
+    },
+    {
+      "id": "revision-1f31b54f-84a7-493a-9870-6e93651eabd2",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will s",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:29.020Z"
+    },
+    {
+      "id": "revision-2588597b-0945-4da1-a778-e5fc197044be",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will sa",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:29.157Z"
+    },
+    {
+      "id": "revision-956eeb93-9d46-4c88-ac3b-23e43f7351cd",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will sav",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:29.307Z"
+    },
+    {
+      "id": "revision-e53bfc08-6505-45ac-9caf-015177e3c745",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:29.419Z"
+    },
+    {
+      "id": "revision-1c110300-9356-4d91-b787-4f7c42942693",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save ",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:29.955Z"
+    },
+    {
+      "id": "revision-68e65a85-a943-4ae1-a3d4-0e996a13c35c",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save g",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:30.147Z"
+    },
+    {
+      "id": "revision-6b01f8ba-df8f-4239-891a-7b861efec759",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gu",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:30.331Z"
+    },
+    {
+      "id": "revision-323f7264-6bde-4e4f-906a-f1b3c4700862",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save guc",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:30.579Z"
+    },
+    {
+      "id": "revision-d36809bc-312d-4052-b734-505c5141de4d",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:30.668Z"
+    },
+    {
+      "id": "revision-2d87b0ee-ae94-4291-976e-dcfeffdf53db",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc ",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:31.708Z"
+    },
+    {
+      "id": "revision-029149b0-e868-43ff-90b9-c9f38b06c5e2",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc f",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:31.932Z"
+    },
+    {
+      "id": "revision-e41c9494-f3bf-409f-931a-ef78465c3c62",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fi",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:32.292Z"
+    },
+    {
+      "id": "revision-aab4e953-2d89-415c-a5d9-355b72dbdbf8",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fie",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:32.879Z"
+    },
+    {
+      "id": "revision-0a5e45a5-be9f-4e2c-a657-bd36f840a54f",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fi",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:33.419Z"
+    },
+    {
+      "id": "revision-88033a57-34da-4ebc-a9a5-6d7297ae6883",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fik",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:33.965Z"
+    },
+    {
+      "id": "revision-0c250f44-9c8b-4718-a78a-36d503959e00",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fi",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:34.964Z"
+    },
+    {
+      "id": "revision-2e4623f0-51fc-4c4f-952d-d0c8ac73e9e8",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc fil",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:35.356Z"
+    },
+    {
+      "id": "revision-5f340874-70b7-46bd-a860-d7694ff17b40",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc file",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:35.628Z"
+    },
+    {
+      "id": "revision-6b655bf9-8d5e-43e3-a103-8084c1d176ee",
+      "noteId": "note-4f32daeb-fc24-4570-80e8-fd556d8c2dde",
+      "title": "Untitled note",
+      "content": "her ei will save gucc files",
+      "tags": [],
+      "capturedAt": "2026-10-22T15:33:36.029Z"
+    },
+    {
+      "id": "revision-4382ffce-8646-4cfa-9272-bb4569651fca",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-22T15:33:52.889Z"
+    },
+    {
+      "id": "revision-1ca12fdf-8e54-459e-977d-5019121f0f7f",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-22T15:34:20.033Z"
+    },
+    {
+      "id": "revision-6a5b4eca-4422-49d8-b5b7-35ddee5433e5",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-22T15:35:06.769Z"
+    },
+    {
+      "id": "revision-f2e2a572-beee-45d3-8e4e-17ec8e4d5596",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-22T15:51:07.471Z"
+    }
+  ],
+  "trash": []
+}

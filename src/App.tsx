@@ -91,6 +91,7 @@ export default function App() {
     togglePinFolder,
     moveFolder,
     reorderFolder,
+    deleteFolder,
     createNote,
     updateNote,
     deleteNote,
@@ -107,6 +108,11 @@ export default function App() {
     contextAnswer,
     askInknote,
     saveContextAnswer,
+    vaultStatus,
+    isVaultSyncing,
+    openVaultFolder,
+    rescanVault,
+    changeVaultDirectory,
   } = useInknoteWorkspace(pushSnapshot);
 
   // 3. Security Hook (AES-GCM / PBKDF2 without leaks)
@@ -193,6 +199,16 @@ export default function App() {
     () => [
       { label: 'Create new note', shortcut: '⌘N', action: createNote },
       { label: 'Open today’s journal', shortcut: '⌘⇧J', action: openDailyJournal },
+      { label: 'Open notes folder in File Explorer', shortcut: '⌘O', action: openVaultFolder },
+      { label: 'Rescan notes from folder', shortcut: '⌘R', action: rescanVault },
+      {
+        label: 'Folder Vault & Sync settings',
+        shortcut: '',
+        action: () => {
+          setIsDrawerOpen(true);
+          setDrawerTab('sync');
+        },
+      },
       {
         label: 'Ask Inknote AI',
         shortcut: '',
@@ -224,7 +240,7 @@ export default function App() {
         action: () => setIsDarkMode((prev) => !prev),
       },
     ],
-    [createNote, exportWorkspace, openDailyJournal]
+    [createNote, exportWorkspace, openDailyJournal, openVaultFolder, rescanVault]
   );
 
   const handleRestoreRevision = useCallback(
@@ -269,6 +285,8 @@ export default function App() {
           setIsDrawerOpen(true);
           setDrawerTab('sync');
         }}
+        onOpenVaultFolder={openVaultFolder}
+        onDeleteFolder={deleteFolder}
       />
 
       {/* 2. Main Workspace */}
@@ -291,6 +309,13 @@ export default function App() {
           canUndo={canUndo}
           onUndo={() => undo(workspace, setWorkspace)}
           onCreateNote={createNote}
+          vaultStatus={vaultStatus}
+          isVaultSyncing={isVaultSyncing}
+          onOpenVaultFolder={openVaultFolder}
+          onOpenSyncDrawer={() => {
+            setIsDrawerOpen(true);
+            setDrawerTab('sync');
+          }}
         />
 
         {/* Workspace Content */}
@@ -436,6 +461,11 @@ export default function App() {
             commitWorkspace({ ...workspace, syncMode: 'git-backup' });
             exportWorkspace();
           }}
+          vaultStatus={vaultStatus}
+          isVaultSyncing={isVaultSyncing}
+          onOpenVaultFolder={openVaultFolder}
+          onRescanVault={rescanVault}
+          onChangeVaultDirectory={changeVaultDirectory}
         />
       </section>
 

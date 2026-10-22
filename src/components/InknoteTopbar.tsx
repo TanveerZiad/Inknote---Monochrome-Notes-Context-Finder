@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
-import { PanelLeft, Search, X, RotateCcw, Plus, FileText } from 'lucide-react';
+import { PanelLeft, Search, X, RotateCcw, Plus, FileText, Folder, RefreshCw } from 'lucide-react';
 import { NoteItem, FolderItem } from '../types/workspace';
 import { snippet } from '../utils/searchEngine';
+import { VaultStatus } from '../lib/vaultBackend';
 
 interface InknoteTopbarProps {
   isSidebarOpen: boolean;
@@ -20,6 +21,10 @@ interface InknoteTopbarProps {
   canUndo: boolean;
   onUndo: () => void;
   onCreateNote: () => void;
+  vaultStatus?: VaultStatus;
+  isVaultSyncing?: boolean;
+  onOpenVaultFolder?: () => void;
+  onOpenSyncDrawer?: () => void;
 }
 
 const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
@@ -39,6 +44,10 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
   canUndo,
   onUndo,
   onCreateNote,
+  vaultStatus,
+  isVaultSyncing,
+  onOpenVaultFolder,
+  onOpenSyncDrawer,
 }) => {
   const getFolderName = (folderId: string) =>
     allFolders.find((f) => f.id === folderId)?.name || 'Inbox';
@@ -132,6 +141,28 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
 
       {/* Topbar Actions */}
       <div className="topbar-right">
+        {/* Local Folder / Vault Indicator & Reveal in Explorer */}
+        <button
+          className="vault-pill-btn"
+          onClick={onOpenVaultFolder}
+          title={
+            vaultStatus?.connected
+              ? `Local Notes Folder: ${vaultStatus.vaultPath}\nClick to view files in File Explorer`
+              : 'Connecting to local folder...'
+          }
+          aria-label="Open local notes folder in Explorer"
+        >
+          <Folder size={14} className="text-muted" />
+          <span className="vault-pill-label">
+            {vaultStatus?.vaultPath ? vaultStatus.vaultPath.split(/[/\\]/).pop() : 'inknote-vault'}
+          </span>
+          <span
+            className={`vault-status-dot ${
+              isVaultSyncing ? 'is-syncing' : vaultStatus?.connected ? 'is-online' : 'is-offline'
+            }`}
+          />
+        </button>
+
         <button
           className="icon-button"
           onClick={onUndo}

@@ -13,8 +13,11 @@ import {
   Sun,
   Moon,
   SlidersHorizontal,
+  FolderOpen,
+  Trash2,
 } from 'lucide-react';
 import { FolderItem, NoteItem } from '../types/workspace';
+import { InknoteDeleteFolderModal } from './Modals/InknoteDeleteFolderModal';
 
 interface InknoteSidebarProps {
   isOpen: boolean;
@@ -35,6 +38,8 @@ interface InknoteSidebarProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   onOpenSyncDrawer: () => void;
+  onOpenVaultFolder?: () => void;
+  onDeleteFolder?: (id: string) => void;
 }
 
 const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
@@ -56,9 +61,12 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
   isDarkMode,
   onToggleDarkMode,
   onOpenSyncDrawer,
+  onOpenVaultFolder,
+  onDeleteFolder,
 }) => {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
+  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -196,6 +204,19 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
                 >
                   <ArrowDown size={12} />
                 </button>
+                {onDeleteFolder && (
+                  <button
+                    className="danger-hover"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFolderToDelete(folder);
+                    }}
+                    title="Delete folder"
+                    aria-label={`Delete folder ${folder.name}`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -204,6 +225,16 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
+        {onOpenVaultFolder && (
+          <button
+            className="icon-button"
+            onClick={onOpenVaultFolder}
+            title="Open notes folder in File Explorer"
+            aria-label="Open notes folder in File Explorer"
+          >
+            <FolderOpen size={16} />
+          </button>
+        )}
         <button
           className="icon-button"
           onClick={onToggleDarkMode}
@@ -219,6 +250,24 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
           <SlidersHorizontal size={16} />
         </button>
       </div>
+
+      {/* Delete Folder Confirmation Modal */}
+      <InknoteDeleteFolderModal
+        isOpen={Boolean(folderToDelete)}
+        folder={folderToDelete}
+        notesCount={
+          folderToDelete
+            ? allNotes.filter((n) => n.folderId === folderToDelete.id).length
+            : 0
+        }
+        onConfirm={() => {
+          if (folderToDelete && onDeleteFolder) {
+            onDeleteFolder(folderToDelete.id);
+            setFolderToDelete(null);
+          }
+        }}
+        onClose={() => setFolderToDelete(null)}
+      />
     </aside>
   );
 };

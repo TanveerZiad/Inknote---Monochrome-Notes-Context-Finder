@@ -16,5 +16,8 @@ DiaryNote_*.app.tar.gz
 docs/
 tasks/
 benchmark-50k-notes.json
+inknote-vault/.trash/
+.inknote-vault.json
+
 
 
