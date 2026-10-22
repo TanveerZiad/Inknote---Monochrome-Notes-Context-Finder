@@ -90,7 +90,13 @@ const InknoteSidebarComponent: React.FC<InknoteSidebarProps> = ({
       {/* Topline Logo & Collapse */}
       <div className="sidebar-topline">
         <div className="wordmark">
-          <span className="wordmark-mark">I</span>
+          <img
+            src="/inknote-icon.png"
+            alt="Inknote logo"
+            className="wordmark-logo"
+            width={28}
+            height={28}
+          />
           <span>Inknote</span>
         </div>
         <button

@@ -7,7 +7,7 @@ pinned: true
 locked: false
 priority: 0
 createdAt: "2026-10-20T08:00:00.000Z"
-updatedAt: "2026-10-22T15:51:07.776Z"
+updatedAt: "2026-10-22T18:16:18.590Z"
 ---
 
 Inknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.
