@@ -1,9 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
-Write-Host "==> Installing DiaryNote for Windows..." -ForegroundColor Cyan
+Write-Host "==> Installing Inknote for Windows..." -ForegroundColor Cyan
 
 # Resolve latest release tag via web redirect (bypasses GitHub API rate limits)
-$repo = "itshimelz/DiaryNote"
+$repo = "TanveerZiad/Inknote---Monochrome-Notes-Context-Finder"
 $webUrl = "https://github.com/$repo/releases/latest"
 
 try {
@@ -24,7 +24,7 @@ try {
 Write-Host "Found latest version: $tagName" -ForegroundColor Green
 
 $versionNum = $tagName.TrimStart('v')
-$fileName = "DiaryNote_${versionNum}_x64-setup.exe"
+$fileName = "Inknote_${versionNum}_x64-setup.exe"
 $downloadUrl = "https://github.com/$repo/releases/download/$tagName/$fileName"
 $tempPath = Join-Path $env:TEMP $fileName
 
@@ -32,7 +32,7 @@ Write-Host "Downloading $fileName..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $tempPath
 } catch {
-    $fileName = "DiaryNote_${versionNum}_x64_en-US.msi"
+    $fileName = "Inknote_${versionNum}_x64_en-US.msi"
     $downloadUrl = "https://github.com/$repo/releases/download/$tagName/$fileName"
     $tempPath = Join-Path $env:TEMP $fileName
     Invoke-WebRequest -Uri $downloadUrl -OutFile $tempPath
@@ -41,4 +41,4 @@ try {
 Write-Host "Launching installer..." -ForegroundColor Green
 Start-Process -FilePath $tempPath -Wait
 
-Write-Host "Successfully completed installation for DiaryNote $tagName!" -ForegroundColor Green
+Write-Host "Successfully completed installation for Inknote $tagName!" -ForegroundColor Green
