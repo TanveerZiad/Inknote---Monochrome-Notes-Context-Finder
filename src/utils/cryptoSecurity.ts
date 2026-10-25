@@ -70,7 +70,7 @@ export async function encryptNotePayload(
       tags: note.tags ?? [],
     })
   );
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plain);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: cryptoBuffer(iv) }, key, plain);
   return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
 }
 
@@ -95,10 +95,16 @@ export async function decryptNotePayload(
 
   const key = await encryptionKey(passcode, salt);
   const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: ivBytes },
+    { name: 'AES-GCM', iv: cryptoBuffer(ivBytes) },
     key,
-    base64ToBytes(cipherValue)
+    cryptoBuffer(base64ToBytes(cipherValue))
   );
 
   return JSON.parse(decoder.decode(plain)) as Pick<NoteItem, 'title' | 'content' | 'tags'>;
+}
+
+export function generateRecoveryKey(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `REC-${hex.slice(0, 6)}-${hex.slice(6, 12)}-${hex.slice(12, 18)}-${hex.slice(18, 24)}`;
 }

@@ -263,16 +263,17 @@ export async function exportBackup(notes: Note[], transform: CanvasTransform, se
 }
 
 export async function exportNotesBackup(notesToExport: Note[], customFilename?: string): Promise<string> {
+  const safeNotes = notesToExport.filter((n) => !n.isLocked && !(n as any).locked && !(n as any).encryptedPayload);
   const dateStr = new Date().toISOString().slice(0, 10);
-  const count = notesToExport.length;
+  const count = safeNotes.length;
   const filename = customFilename || (count === 1
-    ? `${(notesToExport[0]?.title || 'Note').replace(/[^a-z0-9]/gi, '_')}_${dateStr}.json`
+    ? `${(safeNotes[0]?.title || 'Note').replace(/[^a-z0-9]/gi, '_')}_${dateStr}.json`
     : `DiaryNote-Selection-${count}-notes_${dateStr}.json`);
 
   const data = {
     version: 1,
     exportedAt: new Date().toISOString(),
-    notes: notesToExport,
+    notes: safeNotes,
   };
   const jsonString = JSON.stringify(data, null, 2);
   return saveFileWithNotification(filename, jsonString, 'Notes', 'application/json');

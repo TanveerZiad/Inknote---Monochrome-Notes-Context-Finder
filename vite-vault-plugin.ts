@@ -208,16 +208,20 @@ function scanVaultNotes(vaultPath: string, folders: Array<{ id: string; name: st
   const notes: ParsedNote[] = [];
   const folderPathToIdMap: Record<string, string> = {};
 
-  // Build mapping from folder relative path to folderId
+  // Build mapping from folder relative path to folderId across any depth
   for (const f of folders) {
-    if (!f.parentId) {
+    const parts: string[] = [f.name.toLowerCase()];
+    let cur = f;
+    while (cur.parentId) {
+      const parent = folders.find((p) => p.id === cur.parentId);
+      if (!parent) break;
+      parts.unshift(parent.name.toLowerCase());
+      cur = parent;
+    }
+    folderPathToIdMap[parts.join('/')] = f.id;
+    folderPathToIdMap[parts.join('\\')] = f.id;
+    if (parts.length === 1) {
       folderPathToIdMap[f.name.toLowerCase()] = f.id;
-    } else {
-      const parent = folders.find((p) => p.id === f.parentId);
-      if (parent) {
-        folderPathToIdMap[`${parent.name.toLowerCase()}/${f.name.toLowerCase()}`] = f.id;
-        folderPathToIdMap[`${parent.name.toLowerCase()}\\${f.name.toLowerCase()}`] = f.id;
-      }
     }
   }
 

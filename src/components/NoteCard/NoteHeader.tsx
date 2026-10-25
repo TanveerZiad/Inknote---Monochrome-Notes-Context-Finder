@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, X, Pin, Check, FolderMinus, Layers, Smile, Sun, Zap, Coffee, CloudRain, SmilePlus } from 'lucide-react';
+import { Share2, X, Pin, Check, FolderMinus, Layers, Smile, Sun, Zap, Coffee, CloudRain, SmilePlus, Download } from 'lucide-react';
 import { Note, JournalMood } from '../../types';
-import { getUniqueTitleForDay } from '../../utils';
+import { getUniqueTitleForDay, sendNativeAppNotification } from '../../utils';
 import { PaperThemeConfig } from './types';
+import { exportNote, FORMATS } from '../../exporters';
 
 interface NoteHeaderProps {
   note: Note;
@@ -37,7 +38,21 @@ export const NoteHeader: React.FC<NoteHeaderProps> = ({
   const [isEditingTitleLocal, setIsEditingTitleLocal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isMoodPickerOpen, setIsMoodPickerOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const skipBlurSaveRef = useRef(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setIsExportOpen(false);
+      }
+    };
+    if (isExportOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExportOpen]);
 
   useEffect(() => {
     setTitle(note.title || 'Untitled Note');
@@ -336,6 +351,65 @@ export const NoteHeader: React.FC<NoteHeaderProps> = ({
           >
             {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
           </button>
+
+          {/* Export As... Dropdown */}
+          <div className="relative" ref={exportRef}>
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExportOpen(!isExportOpen);
+              }}
+              className={`p-1 rounded-full transition-colors relative ${actionBtnClass}`}
+              title="Export as…"
+              aria-label="Export as…"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            {isExportOpen && (
+              <div
+                onMouseDown={(e) => e.stopPropagation()}
+                className={`absolute right-0 top-full mt-1 w-44 py-1 rounded shadow-lg border z-50 flex flex-col text-xs ${
+                  isDarkCard ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-inherit">
+                  Export As…
+                </div>
+                {Object.entries(FORMATS).map(([fmtId, fmt]) => (
+                  <button
+                    key={fmtId}
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setIsExportOpen(false);
+                      try {
+                        await exportNote(
+                          {
+                            title: note.title,
+                            content: note.content,
+                            locked: note.isLocked,
+                          },
+                          fmtId as any
+                        );
+                        await sendNativeAppNotification(
+                          'Export Successful',
+                          `Exported "${note.title || 'Untitled'}" as ${fmt.label}`
+                        );
+                      } catch (err: any) {
+                        alert(err?.message || 'Export failed');
+                      }
+                    }}
+                    className="w-full text-left px-2.5 py-1 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                  >
+                    {fmt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Close/Delete Icon */}
           <button

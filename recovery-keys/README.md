@@ -1,0 +1,61 @@
+# Inknote Recovery Keys
+
+> **Keep these keys safe.** Any one of these 40 emergency recovery keys can be used to unlock your private Journal and notes if you forgot your password.
+
+## How to Unlock Today's Journal
+1. Click on **Journal** or **Today's Journal** in Inknote.
+2. In the password prompt modal, click **"Lost passkey? Use recovery key"**.
+3. Copy and paste any one of the 40 keys below into the field.
+4. Click **Unlock**. Today's journal note will immediately open!
+
+## 40 Valid Recovery Keys
+
+| # | Recovery Key |
+|---|---|
+| 1 | `REC-7BBBEF-7B7310-26C427-D3DC38` |
+| 2 | `REC-CC4DF4-F21C0F-DEF92E-3871B1` |
+| 3 | `REC-A632E8-FCFAB2-71D7CD-24CB22` |
+| 4 | `REC-88E8A1-6298A5-FC117C-F49BC9` |
+| 5 | `REC-A7DFC2-E7DAB9-E0E6E5-5BB7D3` |
+| 6 | `REC-F3BF09-FB6700-EB71B5-E2B33C` |
+| 7 | `REC-82E2A3-8F3CED-948E08-618BBA` |
+| 8 | `REC-F2874B-EEA818-D63DB5-4B5DF1` |
+| 9 | `REC-392DE9-86E43A-1A206F-590A7F` |
+| 10 | `REC-4288E6-E85EBC-5A315E-ED1D02` |
+| 11 | `REC-9A2EB8-D6EFC1-1F8BBD-9C5138` |
+| 12 | `REC-99EAA1-898C3E-D68448-37B411` |
+| 13 | `REC-EC8B13-AA78AF-3020A6-C1B2D9` |
+| 14 | `REC-D0AE5F-3E3B6E-D05ECF-E18F12` |
+| 15 | `REC-8694F1-F96742-8C0BBE-E111FC` |
+| 16 | `REC-B56F72-7D0A33-F5C093-A92550` |
+| 17 | `REC-FBC793-EB97A3-4C8A17-D11FCF` |
+| 18 | `REC-E236C1-18CFB0-006724-D61CFC` |
+| 19 | `REC-B844C3-7493FA-E55B73-140781` |
+| 20 | `REC-99A690-7699CC-D6CD4B-7BE22B` |
+| 21 | `REC-31EB23-CDD5DB-ECB32B-6687BD` |
+| 22 | `REC-893330-E5D59A-6EA581-75DAF6` |
+| 23 | `REC-67D117-89A8C2-B9BAA5-0C28B0` |
+| 24 | `REC-A92E91-1F6AA2-4169C7-7FB41F` |
+| 25 | `REC-9ECBE5-1C7218-2DC76C-2F6A37` |
+| 26 | `REC-46C40F-DA4401-75A7D0-682D1B` |
+| 27 | `REC-7A8EA3-70BA68-26DAAC-8B19D7` |
+| 28 | `REC-F9CA5B-924A51-F4B7AD-38BB6F` |
+| 29 | `REC-29D8EE-6C5DA0-305A77-47660B` |
+| 30 | `REC-B902AE-D5BEC0-F53D37-477F79` |
+| 31 | `REC-377ED0-E64C0A-CB1503-35C79E` |
+| 32 | `REC-1B9E6D-A6C49B-9700CE-1775E5` |
+| 33 | `REC-0F0B49-829596-3C9234-7CC8CC` |
+| 34 | `REC-E0CEE5-D15A2D-773F22-F293BF` |
+| 35 | `REC-EBD155-71C5CC-A1E481-1D075B` |
+| 36 | `REC-3C1639-7EAD98-26709F-E58B2A` |
+| 37 | `REC-E8981F-60D07F-A98F65-639708` |
+| 38 | `REC-6AE9BB-47B388-484A5A-3BD5DB` |
+| 39 | `REC-9F7C7B-533FF2-3B23E9-00A412` |
+| 40 | `REC-451D04-0DD9A0-C32C95-CDEF53` |
+
+---
+
+## How to Change or Reset Your Password Once Unlocked
+1. Once unlocked, click the three dots (`...`) next to the **Journal** folder in the left sidebar.
+2. Click **Remove passkey protection**.
+3. Click **Protect with passkey** to set a brand-new password of your choice!

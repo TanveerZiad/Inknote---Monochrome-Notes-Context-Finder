@@ -220,7 +220,7 @@ export async function searchNotesByVector(
 ): Promise<{ note: Note; score: number }[]> {
   const notes = await db.notes.toArray();
   const scored = notes
-    .filter((n) => n.embedding && n.embedding.length === queryEmbedding.length)
+    .filter((n) => !n.isLocked && !(n as any).locked && !(n as any).encryptedPayload && n.embedding && n.embedding.length === queryEmbedding.length)
     .map((note) => {
       const vec = note.embedding!;
       let dot = 0;

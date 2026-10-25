@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, Network, FileText, Plus, CheckSquare } from 'lucide-react';
+import { Sparkles, Network, FileText, Plus, CheckSquare, Lock, Unlock } from 'lucide-react';
 
 // Types
 import { NoteItem, NoteRevision } from './types/workspace';
@@ -17,6 +17,7 @@ import { InknoteCard } from './components/InknoteCard';
 import { InknoteUtilityDrawer } from './components/InknoteUtilityDrawer';
 import { InknoteCommandPalette, CommandItem } from './components/Modals/InknoteCommandPalette';
 import { InknoteSecurityModal } from './components/Modals/InknoteSecurityModal';
+import { InknoteLanding } from './components/LandingPage/InknoteLanding';
 
 // Utilities
 import { semanticScore } from './utils/searchEngine';
@@ -47,10 +48,22 @@ export default function App() {
   }, [isDarkMode]);
 
   // Layout & Overlays State
+  const [currentView, setCurrentView] = useState<'landing' | 'workspace'>('landing');
+  const [isGridVisible, setIsGridVisible] = useState<boolean>(() => {
+    return localStorage.getItem('inknote-grid-visible') !== 'false';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'assistant' | 'graph' | 'history' | 'sync'>('assistant');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  const handleToggleGrid = useCallback(() => {
+    setIsGridVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem('inknote-grid-visible', String(next));
+      return next;
+    });
+  }, []);
 
   // Search Query
   const [query, setQuery] = useState('');
@@ -88,6 +101,7 @@ export default function App() {
     draggedNoteId,
     setDraggedNoteId,
     createFolder,
+    updateFolder,
     togglePinFolder,
     moveFolder,
     reorderFolder,
@@ -118,17 +132,27 @@ export default function App() {
   // 3. Security Hook (AES-GCM / PBKDF2 without leaks)
   const {
     unlockedNoteIds,
+    unlockedFolderIds,
     unlockedPayloads,
     securityDialog,
     passcode,
     setPasscode,
     securityError,
     isSecuring,
+    lockFolder,
+    lockAll,
     requestToggleNoteLock,
     submitSecurity,
     closeSecurityDialog,
     openUnlockDialog,
+    resetPassword,
+    clearPasskeyProtection,
   } = useInknoteSecurity(workspace, setWorkspace, commitWorkspace);
+
+  const isCurrentFolderLocked = useMemo(() => {
+    if (!activeFolder || !activeFolder.private) return false;
+    return !unlockedFolderIds.includes(activeFolder.id);
+  }, [activeFolder, unlockedFolderIds]);
 
   // Select note handler with security guard
   const handleSelectNote = useCallback(
@@ -158,6 +182,16 @@ export default function App() {
     [updateNote]
   );
 
+  const handleCreateNewNote = useCallback(() => {
+    setCurrentView('workspace');
+    createNote();
+  }, [createNote]);
+
+  const handleOpenDailyJournal = useCallback(() => {
+    setCurrentView('workspace');
+    openDailyJournal();
+  }, [openDailyJournal]);
+
   // 4. Keyboard Shortcuts Hook (Input guarded)
   useInknoteShortcuts({
     onToggleCommandPalette: () => setIsCommandPaletteOpen((prev) => !prev),
@@ -166,17 +200,24 @@ export default function App() {
       setIsDrawerOpen(false);
       closeSecurityDialog();
     },
-    onNewNote: createNote,
+    onNewNote: handleCreateNewNote,
     onUndo: () => undo(workspace, setWorkspace),
     onRedo: () => redo(workspace, setWorkspace),
-    onOpenDailyJournal: openDailyJournal,
+    onOpenDailyJournal: handleOpenDailyJournal,
+    onToggleGrid: handleToggleGrid,
   });
 
   // Search Results Scoring
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
+    const lockedFolderIds = new Set(
+      workspace.folders
+        .filter((f) => f.private && !unlockedFolderIds.includes(f.id))
+        .map((f) => f.id)
+    );
     return workspace.notes
+      .filter((note) => !lockedFolderIds.has(note.folderId))
       .map((note) => ({
         note,
         score: semanticScore(
@@ -192,13 +233,23 @@ export default function App() {
           +new Date(b.note.updatedAt) - +new Date(a.note.updatedAt)
       )
       .slice(0, 6);
-  }, [query, workspace]);
+  }, [query, workspace, unlockedFolderIds]);
 
   // Command Palette Items
   const commandItems: CommandItem[] = useMemo(
     () => [
-      { label: 'Create new note', shortcut: '⌘N', action: createNote },
-      { label: 'Open today’s journal', shortcut: '⌘⇧J', action: openDailyJournal },
+      { label: 'Create new note', shortcut: '⌘N', action: handleCreateNewNote },
+      { label: 'Open today’s journal', shortcut: '⌘⇧J', action: handleOpenDailyJournal },
+      {
+        label: isGridVisible ? 'Hide engineering grid' : 'Show engineering grid',
+        shortcut: '⌘G',
+        action: handleToggleGrid,
+      },
+      {
+        label: currentView === 'landing' ? 'Open Workspace' : 'Return to Landing Page / Home',
+        shortcut: '⌘H',
+        action: () => setCurrentView((prev) => (prev === 'landing' ? 'workspace' : 'landing')),
+      },
       { label: 'Open notes folder in File Explorer', shortcut: '⌘O', action: openVaultFolder },
       { label: 'Rescan notes from folder', shortcut: '⌘R', action: rescanVault },
       {
@@ -240,7 +291,7 @@ export default function App() {
         action: () => setIsDarkMode((prev) => !prev),
       },
     ],
-    [createNote, exportWorkspace, openDailyJournal, openVaultFolder, rescanVault]
+    [handleCreateNewNote, handleOpenDailyJournal, currentView, exportWorkspace, openVaultFolder, rescanVault]
   );
 
   const handleRestoreRevision = useCallback(
@@ -253,8 +304,28 @@ export default function App() {
     [updateNote]
   );
 
+  if (currentView === 'landing') {
+    return (
+      <div className="view-enter-transition">
+        <InknoteLanding
+          onNewNote={handleCreateNewNote}
+          onOpenWorkspace={() => setCurrentView('workspace')}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+          notesCount={workspace.notes.length}
+          foldersCount={workspace.folders.length}
+        />
+        <InknoteCommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          commands={commandItems}
+        />
+      </div>
+    );
+  }
+
   return (
-    <main className="inknote-shell">
+    <main className="inknote-shell view-enter-transition">
       {/* 1. Collapsible Sidebar */}
       <InknoteSidebar
         isOpen={isSidebarOpen}
@@ -279,6 +350,9 @@ export default function App() {
         onDragStartFolder={setDraggedFolderId}
         onDragEndFolder={() => setDraggedFolderId(null)}
         onDropFolder={reorderFolder}
+        onUpdateFolder={updateFolder}
+        onLockFolder={lockFolder}
+        onUnlockFolder={(fid) => openUnlockDialog(undefined, fid, fid === 'journal')}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
         onOpenSyncDrawer={() => {
@@ -287,10 +361,11 @@ export default function App() {
         }}
         onOpenVaultFolder={openVaultFolder}
         onDeleteFolder={deleteFolder}
+        onGoToLanding={() => setCurrentView('landing')}
       />
 
       {/* 2. Main Workspace */}
-      <section className="inknote-workspace">
+      <section className={`inknote-workspace ${isGridVisible ? '' : 'no-grid'}`}>
         {/* Sticky Topbar */}
         <InknoteTopbar
           isSidebarOpen={isSidebarOpen}
@@ -316,6 +391,14 @@ export default function App() {
             setIsDrawerOpen(true);
             setDrawerTab('sync');
           }}
+          isFolderLocked={isCurrentFolderLocked}
+          onLockFolder={() => activeFolder && lockFolder(activeFolder.id)}
+          onUnlockFolder={() =>
+            activeFolder && openUnlockDialog(undefined, activeFolder.id, activeFolder.id === 'journal')
+          }
+          onGoToLanding={() => setCurrentView('landing')}
+          showGrid={isGridVisible}
+          onToggleGrid={handleToggleGrid}
         />
 
         {/* Workspace Content */}
@@ -347,7 +430,34 @@ export default function App() {
 
           {/* Notes Grid */}
           <section className="note-grid" aria-label="Notes">
-            {visibleNotes.length > 0 ? (
+            {isCurrentFolderLocked ? (
+              <div className="locked-folder-screen">
+                <div className="locked-shield-circle">
+                  <Lock size={32} />
+                </div>
+                <h3>{activeFolder?.name || 'Folder'} is Locked</h3>
+                <p>
+                  This space is protected with passkey encryption. Notes and previews are safely hidden.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={() =>
+                    openUnlockDialog(undefined, activeFolder?.id, activeFolder?.id === 'journal')
+                  }
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '9px 20px',
+                    fontSize: '13px',
+                    borderRadius: '6px',
+                  }}
+                >
+                  <Unlock size={15} />
+                  <span>Unlock {activeFolder?.name || 'Folder'}</span>
+                </button>
+              </div>
+            ) : visibleNotes.length > 0 ? (
               visibleNotes.map((note) => {
                 const isUnlocked = unlockedNoteIds.includes(note.id);
                 return (
@@ -405,9 +515,8 @@ export default function App() {
         {/* Floating Utility Pill Trigger */}
         <div className="floating-dock-pill">
           <button
-            className={`dock-pill-btn ${
-              isDrawerOpen && drawerTab === 'assistant' ? 'is-active' : ''
-            }`}
+            className={`dock-pill-btn ${isDrawerOpen && drawerTab === 'assistant' ? 'is-active' : ''
+              }`}
             onClick={() => {
               setIsDrawerOpen(true);
               setDrawerTab('assistant');
@@ -425,9 +534,8 @@ export default function App() {
             }}
           />
           <button
-            className={`dock-pill-btn ${
-              isDrawerOpen && drawerTab !== 'assistant' ? 'is-active' : ''
-            }`}
+            className={`dock-pill-btn ${isDrawerOpen && drawerTab !== 'assistant' ? 'is-active' : ''
+              }`}
             onClick={() => {
               setIsDrawerOpen(true);
               setDrawerTab('graph');
@@ -481,12 +589,15 @@ export default function App() {
         <InknoteSecurityModal
           isOpen={true}
           mode={securityDialog.mode}
+          folderInfo={securityDialog}
           passcode={passcode}
           onChangePasscode={setPasscode}
           onSubmit={submitSecurity}
           onClose={closeSecurityDialog}
           error={securityError}
           isSecuring={isSecuring}
+          onResetPassword={resetPassword}
+          onClearProtection={clearPasskeyProtection}
         />
       )}
     </main>

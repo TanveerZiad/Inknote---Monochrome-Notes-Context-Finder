@@ -227,9 +227,15 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           case 'highlight':
             chain.setCellAttribute?.('backgroundColor', '#fef08a').run();
             break;
-          case 'print':
-            window.print();
+          case 'print': {
+            import('../exporters/pdf').then(({ printNote }) => {
+              printNote({
+                title: 'Note',
+                content: editor.getText() || '',
+              });
+            }).catch(() => {});
             break;
+          }
           default:
             break;
         }

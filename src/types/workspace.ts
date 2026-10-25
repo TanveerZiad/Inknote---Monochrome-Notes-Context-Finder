@@ -5,6 +5,11 @@ export type FolderItem = {
   priority: number;
   parentId?: string;
   depth?: number;
+  color?: string;
+  icon?: string;
+  order?: number;
+  system?: boolean;
+  private?: boolean;
 };
 
 export type NoteItem = {
@@ -28,6 +33,8 @@ export type NoteItem = {
 export type SecurityConfig = {
   salt: string;
   verifier: string;
+  recoveryVerifier?: string;
+  recoveryVerifiers?: string[];
 };
 
 export type NoteRevision = {

@@ -1,14 +1,31 @@
-import React, { memo } from 'react';
-import { PanelLeft, Search, X, RotateCcw, Plus, FileText, Folder, RefreshCw } from 'lucide-react';
+import React, { memo, useState, useEffect, useRef } from 'react';
+import {
+  PanelLeft,
+  Search,
+  X,
+  RotateCcw,
+  Plus,
+  FileText,
+  Folder,
+  RefreshCw,
+  Download,
+  Lock,
+  Unlock,
+  Home,
+  Grid,
+} from 'lucide-react';
 import { NoteItem, FolderItem } from '../types/workspace';
 import { snippet } from '../utils/searchEngine';
 import { VaultStatus } from '../lib/vaultBackend';
+import { exportNote, FORMATS } from '../exporters';
+import { sendNativeAppNotification } from '../utils';
 
 interface InknoteTopbarProps {
   isSidebarOpen: boolean;
   onOpenSidebar: () => void;
   activeFolderId: string;
   activeFolder?: FolderItem;
+  activeNote?: NoteItem;
   showTasksOnly: boolean;
   tagFilter: string | null;
   query: string;
@@ -25,6 +42,12 @@ interface InknoteTopbarProps {
   isVaultSyncing?: boolean;
   onOpenVaultFolder?: () => void;
   onOpenSyncDrawer?: () => void;
+  isFolderLocked?: boolean;
+  onLockFolder?: () => void;
+  onUnlockFolder?: () => void;
+  onGoToLanding?: () => void;
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
 }
 
 const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
@@ -32,6 +55,7 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
   onOpenSidebar,
   activeFolderId,
   activeFolder,
+  activeNote,
   showTasksOnly,
   tagFilter,
   query,
@@ -48,7 +72,27 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
   isVaultSyncing,
   onOpenVaultFolder,
   onOpenSyncDrawer,
+  isFolderLocked,
+  onLockFolder,
+  onUnlockFolder,
+  onGoToLanding,
+  showGrid,
+  onToggleGrid,
 }) => {
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setIsExportOpen(false);
+      }
+    };
+    if (isExportOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExportOpen]);
   const getFolderName = (folderId: string) =>
     allFolders.find((f) => f.id === folderId)?.name || 'Inbox';
 
@@ -82,7 +126,32 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
         )}
         <div className="topbar-breadcrumbs">
           <span className="eyebrow">{eyebrowText}</span>
-          <h1>{headingText}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1>{headingText}</h1>
+            {activeFolder?.private && (
+              isFolderLocked ? (
+                <button
+                  type="button"
+                  className="folder-lock-status-btn is-locked"
+                  onClick={onUnlockFolder}
+                  title="Folder is locked with passkey. Click to unlock."
+                >
+                  <Lock size={12} />
+                  <span>Locked</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="folder-lock-status-btn is-unlocked"
+                  onClick={onLockFolder}
+                  title="Folder is unlocked for this session. Click to lock now."
+                >
+                  <Lock size={12} />
+                  <span>Lock folder</span>
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
 
@@ -163,6 +232,76 @@ const InknoteTopbarComponent: React.FC<InknoteTopbarProps> = ({
           />
         </button>
 
+        {activeNote && (
+          <div className="relative" ref={exportRef}>
+            <button
+              className="icon-button"
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              title="Export note as…"
+              aria-label="Export note as…"
+            >
+              <Download size={16} />
+            </button>
+            {isExportOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 w-44 py-1 rounded shadow-lg border z-50 flex flex-col text-xs bg-slate-900 border-slate-700 text-slate-200"
+              >
+                <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700">
+                  Export As…
+                </div>
+                {Object.entries(FORMATS).map(([fmtId, fmt]) => (
+                  <button
+                    key={fmtId}
+                    type="button"
+                    onClick={async () => {
+                      setIsExportOpen(false);
+                      try {
+                        await exportNote(
+                          {
+                            title: activeNote.title,
+                            content: activeNote.content,
+                            locked: activeNote.locked,
+                          },
+                          fmtId as any
+                        );
+                        await sendNativeAppNotification(
+                          'Export Successful',
+                          `Exported "${activeNote.title || 'Untitled'}" as ${fmt.label}`
+                        );
+                      } catch (err: any) {
+                        alert(err?.message || 'Export failed');
+                      }
+                    }}
+                    className="w-full text-left px-2.5 py-1 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                  >
+                    {fmt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {onGoToLanding && (
+          <button
+            className="icon-button"
+            onClick={onGoToLanding}
+            title="Landing Page & Overview"
+            aria-label="Landing Page & Overview"
+          >
+            <Home size={16} />
+          </button>
+        )}
+        {onToggleGrid && (
+          <button
+            className={`icon-button ${showGrid ? 'text-blue-500' : 'opacity-60'}`}
+            onClick={onToggleGrid}
+            title={showGrid ? 'Hide engineering grid (⌘G)' : 'Show engineering grid (⌘G)'}
+            aria-label="Toggle grid"
+          >
+            <Grid size={16} />
+          </button>
+        )}
         <button
           className="icon-button"
           onClick={onUndo}

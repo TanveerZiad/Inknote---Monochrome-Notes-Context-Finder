@@ -19,6 +19,7 @@
   --shadow-card-hover: 0 10px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
   --shadow-dropdown: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
   --shadow-drawer: -10px 0 30px -5px rgba(0, 0, 0, 0.08);
+  --workspace-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M8 0v80M24 0v80M56 0v80M72 0v80M0 8h80M0 24h80M0 56h80M0 72h80' stroke='rgba(15,23,42,0.035)' stroke-width='0.5' fill='none'/%3E%3Cpath d='M40 0v80M0 40h80' stroke='rgba(15,23,42,0.075)' stroke-width='0.8' fill='none'/%3E%3Cpath d='M36 40h8M40 36v8' stroke='rgba(15,23,42,0.32)' stroke-width='1.2' fill='none'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -40,6 +41,7 @@
   --shadow-card-hover: 0 12px 28px -5px rgba(0, 0, 0, 0.45);
   --shadow-dropdown: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   --shadow-drawer: -10px 0 30px -5px rgba(0, 0, 0, 0.5);
+  --workspace-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M8 0v80M24 0v80M56 0v80M72 0v80M0 8h80M0 24h80M0 56h80M0 72h80' stroke='rgba(255,255,255,0.025)' stroke-width='0.5' fill='none'/%3E%3Cpath d='M40 0v80M0 40h80' stroke='rgba(255,255,255,0.06)' stroke-width='0.8' fill='none'/%3E%3Cpath d='M36 40h8M40 36v8' stroke='rgba(255,255,255,0.32)' stroke-width='1.2' fill='none'/%3E%3C/svg%3E");
 }
 
 * {
@@ -56,6 +58,45 @@ html, body, #root {
   background-color: var(--bg-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Polished minimalist selection */
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Custom ultra-slim sleek scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+  transition: background 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-subtle);
+}
+
+/* Smooth view transition cross-fade */
+.view-enter-transition {
+  animation: viewFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 button, input, textarea {
@@ -402,6 +443,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   flex-direction: column;
   position: relative;
   scrollbar-width: thin;
+  background-color: var(--bg-app);
+  background-image: var(--workspace-grid);
+  background-repeat: repeat;
+  background-position: 0 0;
+  background-attachment: local;
+  transition: background-image 0.2s ease;
+}
+
+.inknote-workspace.no-grid {
+  background-image: none !important;
 }
 
 .workspace-topbar {
@@ -412,11 +463,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: var(--bg-app);
+  background: rgba(248, 250, 252, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   gap: 16px;
+}
+
+.dark .workspace-topbar {
+  background: rgba(9, 9, 11, 0.88);
 }
 
 .topbar-left {
@@ -636,12 +691,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 /* Modern Note Card */
 .note-card {
   position: relative;
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 18px 20px 16px;
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, min-height 0.2s ease;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, min-height 0.2s ease;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -650,19 +707,38 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   align-self: start;
 }
 
+.dark .note-card {
+  background: rgba(20, 20, 23, 0.92);
+}
+
 .note-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-card-hover);
-  border-color: rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.16);
 }
 
 .dark .note-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .note-card.is-selected {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 1px var(--border-focus), var(--shadow-card-hover);
+  box-shadow: 0 0 0 1.5px var(--border-focus), var(--shadow-card-hover);
+}
+
+@keyframes cardPulseGlow {
+  0% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), var(--shadow-card-hover);
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    box-shadow: var(--shadow-card);
+    transform: translateY(0) scale(1);
+  }
+}
+
+.note-card.is-just-created {
+  animation: cardPulseGlow 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Standard / Compact Card - Inherits exact standard uniform grid dimensions */
@@ -1394,12 +1470,24 @@ mark {
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  box-shadow: 0 10px 30px -5px rgba(0,0,0,0.15), 0 0 0 1px var(--border-subtle);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .floating-dock-pill {
+  background: rgba(24, 24, 27, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.floating-dock-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.18);
 }
 
 .dock-pill-btn {
@@ -1747,6 +1835,84 @@ mark {
   margin: 6px 0 16px;
   font-size: 13px;
   max-width: 320px;
+}
+
+/* Folder Lock Status Button in Topbar */
+.folder-lock-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.folder-lock-status-btn.is-locked {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.folder-lock-status-btn.is-locked:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.folder-lock-status-btn.is-unlocked {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+}
+
+.folder-lock-status-btn.is-unlocked:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Locked Folder Screen */
+.locked-folder-screen {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 380px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.locked-folder-screen .locked-shield-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.locked-folder-screen h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 8px 0;
+}
+
+.locked-folder-screen p {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
 }
 
 /* Responsive */
@@ -2155,5 +2321,109 @@ table.nt {
   color: var(--text-main);
 }
 
+/* ==========================================================================
+   Print Stylesheet: Isolate note content and hide all app UI
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
 
+  /* Reset layout containers for printing */
+  html,
+  body,
+  #root,
+  .inknote-shell,
+  .infinite-canvas-container,
+  .canvas-stage {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #111111 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    transform: none !important;
+    filter: none !important;
+  }
 
+  /* Completely hide all app navigation, headers, sidebars, controls, and dialogs */
+  .workspace-topbar,
+  .workspace-sidebar,
+  .folder-sidebar,
+  .canvas-controls,
+  .minimap-container,
+  .minimap,
+  .floating-actions,
+  .batch-action-bar,
+  .command-palette-backdrop,
+  .command-palette-container,
+  .modal-backdrop,
+  .modal-container,
+  .modal-overlay,
+  .dropdown-menu,
+  .context-menu,
+  .search-popover,
+  .vault-status-dot,
+  .card-toolbar,
+  .card-header-actions,
+  .card-actions,
+  .card-resizer,
+  .card-drag-handle,
+  .icon-button,
+  .btn-primary,
+  .vault-pill-btn,
+  .tiptap-menu-bar,
+  .formatting-bar,
+  button,
+  [role="dialog"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  /* Note cards in print */
+  .inknote-card {
+    position: static !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: auto !important;
+  }
+
+  .inknote-card:not(.is-active):not(.is-selected) {
+    /* If multiple cards are on canvas, only print the focused/selected note if one exists */
+  }
+
+  .card-body,
+  .note-content,
+  .tiptap-content {
+    color: #111111 !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+  }
+
+  h1, h2, h3 {
+    color: #111111 !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 6px 10px !important;
+    color: #111111 !important;
+  }
+}

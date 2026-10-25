@@ -23,7 +23,8 @@
       "id": "journal",
       "name": "Journal",
       "pinned": false,
-      "priority": 0
+      "priority": 0,
+      "private": true
     },
     {
       "id": "references",
@@ -58,6 +59,55 @@
       "parentId": "inbox",
       "pinned": false,
       "priority": 6
+    },
+    {
+      "id": "folder-8b6b2a8e-cf7d-419b-b8b4-d8656b131b65",
+      "name": "hello",
+      "parentId": "journal",
+      "pinned": false,
+      "priority": 7
+    },
+    {
+      "id": "folder-8f41d49d-e523-4948-beab-405411cca8fe",
+      "name": "hi",
+      "parentId": "projects",
+      "depth": 1,
+      "pinned": false,
+      "priority": 3,
+      "order": 3
+    },
+    {
+      "id": "folder-b5395ba5-4829-4fc5-a671-ccbc3a2d2d02",
+      "name": "hoo",
+      "depth": 0,
+      "pinned": false,
+      "priority": 3,
+      "order": 3
+    },
+    {
+      "id": "folder-cfe845d2-a43c-46dc-a687-c5e2042f2089",
+      "name": "j",
+      "parentId": "folder-4bbd8f4e-0e0e-45dc-9579-8e188e085ea9",
+      "depth": 2,
+      "pinned": false,
+      "priority": 5,
+      "order": 5
+    },
+    {
+      "id": "folder-a15ba368-b0a3-4b47-a52a-2cc5be9a57a3",
+      "name": "gucc",
+      "depth": 0,
+      "pinned": false,
+      "priority": 4,
+      "order": 4
+    },
+    {
+      "id": "folder-cc86b4b4-8f37-49d9-beb6-442cf857724b",
+      "name": "gucc",
+      "depth": 0,
+      "pinned": false,
+      "priority": 5,
+      "order": 5
     }
   ],
   "revisions": [
@@ -366,7 +416,362 @@
         "welcome"
       ],
       "capturedAt": "2026-10-22T15:51:07.471Z"
+    },
+    {
+      "id": "revision-47302a0d-7bf6-4a6d-a03f-4887b50815b3",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-23T13:07:55.493Z"
+    },
+    {
+      "id": "revision-f13d1d0b-a53a-45b0-b2c0-d9aed7eb99a9",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:26.746Z"
+    },
+    {
+      "id": "revision-643b088b-11d7-4360-949b-c7b9f7badd93",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "t",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:26.996Z"
+    },
+    {
+      "id": "revision-ee3255d9-ae34-4ae5-a66e-5a46cfe4706f",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "to",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:27.372Z"
+    },
+    {
+      "id": "revision-6b6be6bb-146e-417b-a0b5-58f2b1722bdb",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "tod",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:27.651Z"
+    },
+    {
+      "id": "revision-4a260ffc-4753-4f4f-8eef-5599227e2b0b",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "toda",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:27.860Z"
+    },
+    {
+      "id": "revision-eb280a80-67a9-441d-90fb-ab99b64a4d61",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:28.215Z"
+    },
+    {
+      "id": "revision-fe78fda0-440c-4117-b467-42d54c45cd2e",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today ",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:28.667Z"
+    },
+    {
+      "id": "revision-499a658e-606d-4edd-b6c3-b1047a8e60ae",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:28.979Z"
+    },
+    {
+      "id": "revision-03f29d97-31ff-47b3-94eb-2b1551137c88",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I ",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:29.380Z"
+    },
+    {
+      "id": "revision-0a091232-31a4-42c1-8fb0-0a3f1d342d13",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I m",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:29.579Z"
+    },
+    {
+      "id": "revision-b68806d3-36ab-40ca-b9f9-a890e513585d",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I ma",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:29.787Z"
+    },
+    {
+      "id": "revision-4a3d4342-5636-4c7a-bef6-e0300997ecaa",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I mad",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:30.075Z"
+    },
+    {
+      "id": "revision-8fc33f59-f799-438c-811c-e08732863db2",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:30.347Z"
+    },
+    {
+      "id": "revision-a6e074ff-7de3-40ff-9272-1e2c0cc0e71a",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made ",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:31.979Z"
+    },
+    {
+      "id": "revision-7722c7aa-3266-463c-92e7-60a8a9ea8aa9",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made a",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:32.419Z"
+    },
+    {
+      "id": "revision-fbe7a3ca-38f8-4051-873a-77ccf69354dd",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made a ",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:33.043Z"
+    },
+    {
+      "id": "revision-5f2e6ffc-1d72-4776-911d-bde18f9e046b",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made a t",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:33.243Z"
+    },
+    {
+      "id": "revision-fcb01863-8751-40a0-841f-903697491493",
+      "noteId": "note-0bed3cb1-1a01-4d27-8502-a977c4fae389",
+      "title": "Untitled note",
+      "content": "today I made a te",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:16:33.491Z"
+    },
+    {
+      "id": "revision-9a3b32e9-4ca4-419d-8edf-8795ff35e93b",
+      "noteId": "note-d62ba230-8697-4476-8014-966f61f59d3b",
+      "title": "Untitled note",
+      "content": "",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:26:09.732Z"
+    },
+    {
+      "id": "revision-b8336572-e8bc-4f84-9c20-bb7d4f4a9e46",
+      "noteId": "note-d62ba230-8697-4476-8014-966f61f59d3b",
+      "title": "Untitled note",
+      "content": "h",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:26:10.059Z"
+    },
+    {
+      "id": "revision-94340a8f-6eb8-4fea-8fce-e520289737b0",
+      "noteId": "note-d62ba230-8697-4476-8014-966f61f59d3b",
+      "title": "Untitled note",
+      "content": "hj",
+      "tags": [],
+      "capturedAt": "2026-10-23T13:26:10.719Z"
+    },
+    {
+      "id": "revision-fbd564cf-6371-4b41-af1d-9be1d83707bf",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-23T13:47:07.950Z"
+    },
+    {
+      "id": "revision-7008a980-8b8a-4e8c-9e93-01d59f2c5f45",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-23T14:06:26.526Z"
+    },
+    {
+      "id": "revision-19537724-daac-450a-b149-43c7b2657576",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-23T14:07:06.607Z"
+    },
+    {
+      "id": "revision-df21ff36-e21d-4ed6-b0f5-c33873aac0eb",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-23T14:07:36.279Z"
+    },
+    {
+      "id": "revision-1b0b0825-df75-4520-a348-cdaf04adc1fc",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T13:05:46.336Z"
+    },
+    {
+      "id": "revision-c2342186-fea6-40de-9686-f475314edee1",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T13:22:32.829Z"
+    },
+    {
+      "id": "revision-e3f396cf-aad7-427a-a12e-a08c642ab9a7",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T15:54:19.654Z"
+    },
+    {
+      "id": "revision-dafd21bb-7c21-4895-bc21-036a2d4a69ab",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:38:47.523Z"
+    },
+    {
+      "id": "revision-7d988d1a-0768-450c-8dc7-102068479e9d",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:39:10.050Z"
+    },
+    {
+      "id": "revision-ec97a8bd-388b-4fa1-99b1-2363bb30ff54",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:39:24.140Z"
+    },
+    {
+      "id": "revision-d66d7694-c307-49a5-b758-1f057fca553e",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:40:13.679Z"
+    },
+    {
+      "id": "revision-d55fb51a-2db9-4d20-b5a7-982ea55191af",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:41:39.219Z"
+    },
+    {
+      "id": "revision-be528f3c-0292-4962-b1b5-4806f15c262f",
+      "noteId": "welcome",
+      "title": "A quieter place to think",
+      "content": "\nInknote keeps the important things close. Make a folder, write a note, and let the rest stay out of the way.\n\n- [x] Streamline workspace\n\n- [ ] Write down great ideas\n\n- [ ] Link thoughts with @references",
+      "tags": [
+        "welcome"
+      ],
+      "capturedAt": "2026-10-25T16:42:39.333Z"
     }
   ],
-  "trash": []
+  "trash": [],
+  "security": {
+    "salt": "BmaNPgBxFkKAmfIQ+/Zq3A==",
+    "verifier": "9xObFmejJeRa2z2q85/Z/abrZBxbvsZYiiL7XIwdv1I=",
+    "recoveryVerifier": "XVsig2h8/crei8ikPURLCo1VVbwxowodwsIvdFCrV8E=",
+    "recoveryVerifiers": [
+      "XVsig2h8/crei8ikPURLCo1VVbwxowodwsIvdFCrV8E=",
+      "5h4QR73tvnbEsh9KbLOaVvK2RZuLGS40uOMKCWa123M=",
+      "9K3615pQoXWfPxRDWXXk6eZLWVZ/D8Qm1RQYk3MBtTs=",
+      "plg17xGRNJbPnJ+6RsdPjy23h3BKeRMAGc1lSrmn62k=",
+      "s6voG2dgyhHoW2IUH2CqTTPk7HLtfQ/DZMB8IolP9FY=",
+      "F47hEcev7QnNOHlAuFbcD98tORWTHCtHps6L1QOkZ0o=",
+      "PWnZTR8Sh4UueIgKZTfI2ZJRrxIrqLjGQXWtHn76GMk=",
+      "ndnOIKIFs7ro80s6xIBalkcfJcK11hLq36DXZMSn9Jw=",
+      "HiyeyVd46Crcr3qtXNNOZeUxs2tvdN6PiZdizZcs/fo=",
+      "ar917QBxRrgDdZBcFdKfs5YrJrV1KM5kTKUlDt1zCA8=",
+      "L1U48fAU5S2wQ+JhOew+wxtxtuYwlW8Ds3+RdzRK9SM=",
+      "GbyvD+k1UqQ9ydjcRDubVHsaxX1rfjB7QoRA8iTSVE4=",
+      "Gh5Jm3iHvV+asEEIhglK3r01YjXyX+vcbGwBT9hu6Vs=",
+      "n39NFcgL17z5oieQ4zzPSxvo0kkYlpts2JOMCFxw6sc=",
+      "2rhUi/YNM3KiXVwFVJPqHDUVKJtTJGC6xTjxEEFFwYQ=",
+      "6Dr8Dh5kqEujGPkCvsPTxPxZepCxS/Zp0mCR5BFmRY4=",
+      "C1bpqBV9rk7Ixnza+OTMSO6OdCGs7B18ToIKbqIge58=",
+      "C4xnpeULc3prn6uPGhm/DAm4SDpde00/gbsvMG2nOco=",
+      "Wg4zZ5qwMy/j7S7JbIRah6Idfg8TEJmtxpGDjOWqjDw=",
+      "I8w6b/sFtALMYtXcXLvZkerGIiMoKW5mc6mWKTHr0vc=",
+      "b+BVLzmDUK9438fIpqd5eA92rotU4gqbKKlX7rGbcPU=",
+      "7N+gsowO2sjiYoUupQZofART4bqujGXJmuD8tduj69A=",
+      "CK8xg+yBLMMYlgN6pmO3rf8uPr7Ahes6FuJ0k9Zezfg=",
+      "DB95wt9WsTiqeiOtqH5sVaF8Lmp7sOvpoDs5kIYqaA4=",
+      "zUGfD2whEU7gdC8jqMbWA1241uhnl2as3yCwVBFZK60=",
+      "t2WzyMrsk3khdiifZGlwt+kdJhjTSXf4gsKrlmSFAgY=",
+      "lHSa9B6sWyDSBJvEBzr3QNYkvdBlF8CgML2rCneorso=",
+      "Uk9qPlIzcl/n4tm7fDM9hhRetJSkxIg6nPANgmeQR+Q=",
+      "NYg+A5UdH8xNlU57o2EhTBdHMdMQ1LX7go6O/k+iEqY=",
+      "iziC8yQv/Yfxkb48hlCkGUXoNGfqXYFd0pSdaxlKdiE=",
+      "wye36/8MFEIzCSDzQ2jfXMMIHjYmT+gAPgIMrjU1iO8=",
+      "VWPT/XCHMdm3geCT1Mv01HpkX23jy1hlR0T53oaLpO8=",
+      "3zGY1PcRxaQdKPo3/rhT3YSJjT1YV1nW629BzvzdtO0=",
+      "9BYanKzVhPgXWkP0/GPewyxChDx9960ZEcgdQG6h6Gk=",
+      "yu1+cvgzKWhWgvhYqmI9tyVU1egwJDs5M1AQimBHqSI=",
+      "shiFQ4u8RDFykluEE6sKi8l8TJXeIcAwHyhsrEjl8dg=",
+      "KkhPwBzZtS7htS6QfsDoopy7iTAdHCQuO+0+I9x4Uy0=",
+      "I6of8HZpw5v6IQOhXD8WYXPMCm1X4NlR9KxtCgqUN6E=",
+      "VneFaiHQQlfh5tSTvUyHk9AGUymqL8oAFr1p2qDTaQQ=",
+      "L0ff5dirwIkJBMJu0XKrJ+MfSv+dlQ4/GDlnjt0/MgI="
+    ]
+  }
 }

@@ -18,6 +18,8 @@ import {
   Clipboard,
   Plus,
 } from 'lucide-react';
+import { exportNote, FORMATS } from '../exporters';
+import { sendNativeAppNotification } from '../utils';
 
 interface NoteContextMenuProps {
   x: number;
@@ -68,6 +70,7 @@ const NoteContextMenuComponent: React.FC<NoteContextMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showExportPicker, setShowExportPicker] = useState(false);
 
   const isDark = themeMode !== 'light';
 
@@ -328,33 +331,59 @@ const NoteContextMenuComponent: React.FC<NoteContextMenuProps> = ({
 
       <div className={`my-1 h-px ${dividerClass}`} />
 
-      {/* 7. Backup (.json) */}
-      <button
-        type="button"
-        onClick={() => {
-          onExportNotes?.(selectedNoteIds, 'json');
-          onClose();
-        }}
-        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-sm transition-colors text-left ${btnClass}`}
-      >
-        <Download className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-        <span>Backup ({isSingle ? 'Single' : 'Selected'}) (.json)</span>
-      </button>
-
-      {/* 8. Export Markdown (.md) */}
-      {isSingle && (
+      {/* 7. Export as... Submenu */}
+      <div className="relative">
         <button
           type="button"
-          onClick={() => {
-            onExportNotes?.(selectedNoteIds, 'md');
-            onClose();
-          }}
-          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-sm transition-colors text-left ${btnClass}`}
+          onClick={() => setShowExportPicker(!showExportPicker)}
+          className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-sm transition-colors text-left ${btnClass}`}
         >
-          <Download className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span>Export Markdown (.md)</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Download className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span>Export As…</span>
+          </div>
+          <span className="text-[10px] text-slate-400">{showExportPicker ? '‹' : '›'}</span>
         </button>
-      )}
+
+        {showExportPicker && (
+          <div
+            className={`p-1 my-1 rounded border flex flex-col gap-0.5 max-h-48 overflow-y-auto ${
+              isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            {Object.entries(FORMATS).map(([fmtId, fmt]) => (
+              <button
+                key={fmtId}
+                type="button"
+                onClick={async () => {
+                  const targetNote = notes.find((n) => selectedNoteIds.includes(n.id)) || notes[0];
+                  if (!targetNote) return;
+                  try {
+                    await exportNote(
+                      {
+                        title: targetNote.title,
+                        content: targetNote.content,
+                        locked: targetNote.isLocked,
+                      },
+                      fmtId as any
+                    );
+                    await sendNativeAppNotification(
+                      'Export Successful',
+                      `Exported "${targetNote.title || 'Untitled'}" as ${fmt.label}`
+                    );
+                  } catch (err: any) {
+                    alert(err?.message || 'Export failed');
+                  }
+                  onClose();
+                }}
+                className={`w-full text-left px-2 py-1 text-xs rounded hover:bg-slate-800/20 transition-colors ${btnClass}`}
+              >
+                {fmt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 9. Duplicate Note(s) */}
       {isSingle && (

@@ -7,6 +7,7 @@ interface UseInknoteShortcutsOptions {
   onUndo: () => void;
   onRedo?: () => void;
   onOpenDailyJournal: () => void;
+  onToggleGrid?: () => void;
 }
 
 export function useInknoteShortcuts({
@@ -16,6 +17,7 @@ export function useInknoteShortcuts({
   onUndo,
   onRedo,
   onOpenDailyJournal,
+  onToggleGrid,
 }: UseInknoteShortcutsOptions) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -49,6 +51,9 @@ export function useInknoteShortcuts({
       if (modifier && event.key.toLowerCase() === 'n') {
         event.preventDefault();
         onNewNote();
+      } else if (modifier && event.key.toLowerCase() === 'g') {
+        event.preventDefault();
+        onToggleGrid?.();
       } else if (modifier && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         if (event.shiftKey) {
@@ -64,5 +69,5 @@ export function useInknoteShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onToggleCommandPalette, onEscape, onNewNote, onUndo, onRedo, onOpenDailyJournal]);
+  }, [onToggleCommandPalette, onEscape, onNewNote, onUndo, onRedo, onOpenDailyJournal, onToggleGrid]);
 }

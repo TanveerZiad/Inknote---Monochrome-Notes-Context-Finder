@@ -31,6 +31,10 @@
     "@tiptap/starter-kit": "^3.32.0",
     "@vitejs/plugin-react": "^5.0.4",
     "dexie": "^4.4.4",
+    "docx": "^9.14.0",
+    "dompurify": "^3.4.17",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "marked": "^18.1.1",
     "motion": "^12.23.24",
@@ -45,6 +49,7 @@
   "devDependencies": {
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/cli": "^2.11.4",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^22.14.0",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",

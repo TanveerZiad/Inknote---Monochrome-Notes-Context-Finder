@@ -17,11 +17,11 @@ const STORAGE_KEY = 'inknote-workspace-v1';
 
 export const seedWorkspace: Workspace = {
   folders: [
-    { id: 'inbox', name: 'Inbox', pinned: true, priority: 0 },
-    { id: 'projects', name: 'Projects', pinned: true, priority: 1 },
+    { id: 'inbox', name: 'Inbox', pinned: true, priority: 0, system: true },
+    { id: 'projects', name: 'Projects', pinned: false, priority: 1 },
     { id: 'inknote', name: 'Inknote', parentId: 'projects', pinned: false, priority: 0 },
-    { id: 'journal', name: 'Journal', pinned: false, priority: 0 },
-    { id: 'references', name: 'References', pinned: false, priority: 1 },
+    { id: 'journal', name: 'Journal', pinned: false, priority: 2 },
+    { id: 'references', name: 'References', pinned: false, priority: 3 },
   ],
   notes: [
     {
@@ -182,6 +182,29 @@ export function useInknoteWorkspace(
     return walk(undefined);
   }, [workspace.folders]);
 
+  // Sync session unlocked private folders
+  const [unlockedFolderIds, setUnlockedFolderIds] = useState<string[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('inknote-unlocked-folders');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleSecChange = () => {
+      try {
+        const saved = sessionStorage.getItem('inknote-unlocked-folders');
+        setUnlockedFolderIds(saved ? JSON.parse(saved) : []);
+      } catch {
+        setUnlockedFolderIds([]);
+      }
+    };
+    window.addEventListener('inknote-security-changed', handleSecChange);
+    return () => window.removeEventListener('inknote-security-changed', handleSecChange);
+  }, []);
+
   const activeFolder = useMemo(
     () => workspace.folders.find((f) => f.id === activeFolderId),
     [workspace.folders, activeFolderId]
@@ -189,9 +212,21 @@ export function useInknoteWorkspace(
 
   // Filtered & sorted visible notes
   const visibleNotes = useMemo(() => {
+    // Locked private folders: notes must be completely hidden
+    const lockedPrivateFolderIds = new Set(
+      workspace.folders
+        .filter((f) => f.private && !unlockedFolderIds.includes(f.id))
+        .map((f) => f.id)
+    );
+
+    // If viewing a locked private folder, hide all notes so no titles/previews leak
+    if (lockedPrivateFolderIds.has(activeFolderId)) {
+      return [];
+    }
+
     let list =
       activeFolderId === 'all'
-        ? workspace.notes
+        ? workspace.notes.filter((note) => !lockedPrivateFolderIds.has(note.folderId))
         : workspace.notes.filter((note) => note.folderId === activeFolderId);
 
     if (showTasksOnly) {
@@ -208,7 +243,7 @@ export function useInknoteWorkspace(
         (a.priority ?? 0) - (b.priority ?? 0) ||
         +new Date(b.updatedAt) - +new Date(a.updatedAt)
     );
-  }, [activeFolderId, workspace.notes, showTasksOnly, tagFilter]);
+  }, [activeFolderId, workspace.notes, workspace.folders, unlockedFolderIds, showTasksOnly, tagFilter]);
 
   const selectedNote = useMemo(() => {
     return (
@@ -218,36 +253,171 @@ export function useInknoteWorkspace(
     );
   }, [workspace.notes, selectedNoteId, visibleNotes]);
 
-  // Context notes for AI
-  const contextNotes = useMemo(
-    () => workspace.notes.filter((note) => note.inContext !== false && !note.locked),
-    [workspace.notes]
+  // Context notes for AI (exclude locked and notes in locked private folders)
+  const contextNotes = useMemo(() => {
+    const lockedPrivateFolderIds = new Set(
+      workspace.folders
+        .filter((f) => f.private && !unlockedFolderIds.includes(f.id))
+        .map((f) => f.id)
+    );
+    return workspace.notes.filter(
+      (note) =>
+        note.inContext !== false &&
+        !note.locked &&
+        !lockedPrivateFolderIds.has(note.folderId)
+    );
+  }, [workspace.notes, workspace.folders, unlockedFolderIds]);
+
+  // Helper: check if checkParentId is an ancestor of folderId
+  const isDescendant = useCallback(
+    (parentCandidateId: string, folderId: string): boolean => {
+      let cur = workspace.folders.find((f) => f.id === folderId);
+      while (cur && cur.parentId) {
+        if (cur.parentId === parentCandidateId) return true;
+        cur = workspace.folders.find((f) => f.id === cur!.parentId);
+      }
+      return false;
+    },
+    [workspace.folders]
+  );
+
+  const getFolderDepth = useCallback(
+    (folderId: string | undefined): number => {
+      let d = 0;
+      let cur = workspace.folders.find((f) => f.id === folderId);
+      while (cur && cur.parentId) {
+        d++;
+        cur = workspace.folders.find((f) => f.id === cur!.parentId);
+      }
+      return d;
+    },
+    [workspace.folders]
+  );
+
+  const getSubtreeHeight = useCallback(
+    (folderId: string): number => {
+      const children = workspace.folders.filter((f) => f.parentId === folderId);
+      if (children.length === 0) return 0;
+      return 1 + Math.max(...children.map((c) => getSubtreeHeight(c.id)));
+    },
+    [workspace.folders]
   );
 
   // Folder Operations
   const createFolder = useCallback(
-    (name: string) => {
+    (name: string, targetParentId?: string | null) => {
       const trimmed = name.trim();
       if (!trimmed) return;
-      const unpinnedPriorities = workspace.folders
-        .filter((f) => !f.pinned)
-        .map((f) => f.priority);
-      const parentId = activeFolderId !== 'all' ? activeFolderId : undefined;
+
+      // When targetParentId is explicitly provided, use it; otherwise, use activeFolderId if valid, else root (undefined)
+      let parentId: string | undefined = undefined;
+      if (targetParentId !== undefined) {
+        parentId = targetParentId || undefined;
+      } else if (activeFolderId && activeFolderId !== 'all' && workspace.folders.some((f) => f.id === activeFolderId)) {
+        parentId = activeFolderId;
+      }
+
+      if (parentId) {
+        const parentDepth = getFolderDepth(parentId);
+        if (parentDepth >= 6) {
+          alert('Maximum folder nesting depth (6) reached.');
+          return;
+        }
+      }
+
       const siblingPriorities = workspace.folders
         .filter((f) => f.parentId === parentId)
         .map((f) => f.priority);
+      const siblingOrders = workspace.folders
+        .filter((f) => f.parentId === parentId)
+        .map((f) => f.order ?? f.priority);
+
       const folder: FolderItem = {
         id: makeId('folder'),
         name: trimmed,
         parentId,
+        depth: parentId ? getFolderDepth(parentId) + 1 : 0,
         pinned: false,
-        priority: Math.max(-1, ...siblingPriorities, ...unpinnedPriorities) + 1,
+        priority: Math.max(-1, ...siblingPriorities) + 1,
+        order: Math.max(-1, ...siblingOrders) + 1,
       };
       commitWorkspace({ ...workspace, folders: [...workspace.folders, folder] });
       setActiveFolderId(folder.id);
     },
-    [activeFolderId, commitWorkspace, workspace]
+    [activeFolderId, commitWorkspace, getFolderDepth, workspace]
   );
+
+  const updateFolder = useCallback(
+    (id: string, updates: Partial<FolderItem>) => {
+      commitWorkspace({
+        ...workspace,
+        folders: workspace.folders.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      });
+    },
+    [commitWorkspace, workspace]
+  );
+
+  const renameFolder = useCallback(
+    (id: string, newName: string) => {
+      const trimmed = newName.trim();
+      if (!trimmed) return;
+      updateFolder(id, { name: trimmed });
+    },
+    [updateFolder]
+  );
+
+  const moveFolderToParent = useCallback(
+    (folderId: string, newParentId: string | undefined) => {
+      if (folderId === 'inbox') {
+        alert('The Inbox folder cannot be moved.');
+        return;
+      }
+      if (folderId === newParentId) return;
+      if (newParentId && isDescendant(folderId, newParentId)) {
+        alert('Cannot move a folder into its own subfolder.');
+        return;
+      }
+      const parentDepth = getFolderDepth(newParentId);
+      const subtreeHeight = getSubtreeHeight(folderId);
+      if (newParentId && parentDepth + 1 + subtreeHeight > 6) {
+        alert('Cannot move folder: nesting would exceed maximum depth of 6.');
+        return;
+      }
+
+      const siblingOrders = workspace.folders
+        .filter((f) => f.parentId === newParentId)
+        .map((f) => f.order ?? f.priority);
+
+      commitWorkspace({
+        ...workspace,
+        folders: workspace.folders.map((f) =>
+          f.id === folderId
+            ? { ...f, parentId: newParentId, order: Math.max(-1, ...siblingOrders) + 1 }
+            : f
+        ),
+      });
+    },
+    [commitWorkspace, getFolderDepth, getSubtreeHeight, isDescendant, workspace]
+  );
+
+  useEffect(() => {
+    const handleFolderUpdate = (e: any) => {
+      if (e.detail?.id && e.detail?.updates) {
+        updateFolder(e.detail.id, e.detail.updates);
+      }
+    };
+    const handleMoveParent = (e: any) => {
+      if (e.detail?.folderId !== undefined) {
+        moveFolderToParent(e.detail.folderId, e.detail.newParentId);
+      }
+    };
+    window.addEventListener('inknote-update-folder', handleFolderUpdate);
+    window.addEventListener('inknote-move-folder-parent', handleMoveParent);
+    return () => {
+      window.removeEventListener('inknote-update-folder', handleFolderUpdate);
+      window.removeEventListener('inknote-move-folder-parent', handleMoveParent);
+    };
+  }, [updateFolder, moveFolderToParent]);
 
   const togglePinFolder = useCallback(
     (id: string) => {
@@ -275,8 +445,8 @@ export function useInknoteWorkspace(
       const target = workspace.folders.find((f) => f.id === id);
       if (!target) return;
       const group = workspace.folders
-        .filter((f) => f.pinned === target.pinned)
-        .sort((a, b) => a.priority - b.priority);
+        .filter((f) => f.pinned === target.pinned && f.parentId === target.parentId)
+        .sort((a, b) => (a.order ?? a.priority) - (b.order ?? b.priority));
       const currentIndex = group.findIndex((f) => f.id === id);
       const nextIndex = currentIndex + direction;
       if (nextIndex < 0 || nextIndex >= group.length) return;
@@ -289,7 +459,9 @@ export function useInknoteWorkspace(
       commitWorkspace({
         ...workspace,
         folders: workspace.folders.map((f) =>
-          priorities.has(f.id) ? { ...f, priority: priorities.get(f.id)! } : f
+          priorities.has(f.id)
+            ? { ...f, priority: priorities.get(f.id)!, order: priorities.get(f.id)! }
+            : f
         ),
       });
     },
@@ -298,38 +470,102 @@ export function useInknoteWorkspace(
 
   const reorderFolder = useCallback(
     (overId: string) => {
-      if (!draggedFolderId || draggedFolderId === overId) return;
+      // 1) Note dropped on a folder
+      if (draggedNoteId) {
+        const note = workspace.notes.find((n) => n.id === draggedNoteId);
+        if (note && note.folderId !== overId) {
+          commitWorkspace({
+            ...workspace,
+            notes: workspace.notes.map((n) =>
+              n.id === draggedNoteId
+                ? { ...n, folderId: overId, updatedAt: new Date().toISOString() }
+                : n
+            ),
+          });
+        }
+        setDraggedNoteId(null);
+        return;
+      }
+
+      // 2) Folder dropped on a folder or root
+      if (!draggedFolderId || draggedFolderId === overId) {
+        setDraggedFolderId(null);
+        return;
+      }
+      if (draggedFolderId === 'inbox') {
+        alert('The Inbox folder cannot be moved.');
+        setDraggedFolderId(null);
+        return;
+      }
+
+      if (overId === 'root') {
+        moveFolderToParent(draggedFolderId, undefined);
+        setDraggedFolderId(null);
+        return;
+      }
+
       const dragged = workspace.folders.find((f) => f.id === draggedFolderId);
       const over = workspace.folders.find((f) => f.id === overId);
-      if (!dragged || !over || dragged.parentId !== over.parentId) return;
-      const siblings = workspace.folders
-        .filter((f) => f.parentId === dragged.parentId)
-        .sort((a, b) => a.priority - b.priority)
-        .filter((f) => f.id !== dragged.id);
-      siblings.splice(
-        siblings.findIndex((f) => f.id === over.id),
-        0,
-        dragged
-      );
-      const priorities = new Map(siblings.map((f, index) => [f.id, index]));
+      if (!dragged || !over) {
+        setDraggedFolderId(null);
+        return;
+      }
+
+      // Prevent dropping into itself or its descendants
+      if (isDescendant(draggedFolderId, overId)) {
+        alert('Cannot drop a folder into its own descendants.');
+        setDraggedFolderId(null);
+        return;
+      }
+
+      // Check max depth 6
+      const parentDepth = getFolderDepth(overId);
+      const subtreeHeight = getSubtreeHeight(draggedFolderId);
+      if (parentDepth + 1 + subtreeHeight > 6) {
+        alert('Cannot nest folder: maximum depth of 6 reached.');
+        setDraggedFolderId(null);
+        return;
+      }
+
+      const siblingOrders = workspace.folders
+        .filter((f) => f.parentId === overId)
+        .map((f) => f.order ?? f.priority);
+
       commitWorkspace({
         ...workspace,
         folders: workspace.folders.map((f) =>
-          priorities.has(f.id) ? { ...f, priority: priorities.get(f.id)! } : f
+          f.id === draggedFolderId
+            ? { ...f, parentId: overId, order: Math.max(-1, ...siblingOrders) + 1 }
+            : f
         ),
       });
+      setDraggedFolderId(null);
     },
-    [commitWorkspace, draggedFolderId, workspace]
+    [
+      commitWorkspace,
+      draggedFolderId,
+      draggedNoteId,
+      getFolderDepth,
+      getSubtreeHeight,
+      isDescendant,
+      workspace,
+    ]
   );
 
   const deleteFolder = useCallback(
     (id: string) => {
+      const targetFolder = workspace.folders.find((f) => f.id === id);
+      if (!targetFolder) return;
+
+      if (targetFolder.id === 'inbox' || targetFolder.system) {
+        alert('The Inbox folder is protected and cannot be deleted.');
+        return;
+      }
+
       if (workspace.folders.length <= 1) {
         alert('You must have at least one folder in your workspace.');
         return;
       }
-      const targetFolder = workspace.folders.find((f) => f.id === id);
-      if (!targetFolder) return;
 
       const allSubFolderIds = new Set<string>([id]);
       let added = true;
@@ -348,7 +584,7 @@ export function useInknoteWorkspace(
       const remainingFolders = workspace.folders.filter((f) => !allSubFolderIds.has(f.id));
 
       if (allSubFolderIds.has(activeFolderId)) {
-        setActiveFolderId(remainingFolders[0]?.id || 'all');
+        setActiveFolderId(remainingFolders[0]?.id || 'inbox');
       }
 
       const nextWorkspace: Workspace = {
@@ -536,32 +772,72 @@ export function useInknoteWorkspace(
     [commitWorkspace, draggedNoteId, workspace]
   );
 
-  const openDailyJournal = useCallback(() => {
-    const today = dateKey();
-    const existing = workspace.notes.find((n) => n.journalDate === today);
-    if (existing) {
-      setSelectedNoteId(existing.id);
-      setActiveFolderId(existing.folderId);
-      return;
-    }
-    const journalFolder =
-      workspace.folders.find((f) => f.name.toLowerCase() === 'journal') ?? folders[0];
-    if (!journalFolder) return;
-    const now = new Date().toISOString();
-    const note: NoteItem = {
-      id: makeId('journal'),
-      folderId: journalFolder.id,
-      title: `Journal · ${formatDate(now)}`,
-      content: `# ${formatDate(now)}\n\nWhat is on your mind today?`,
-      tags: ['journal'],
-      journalDate: today,
-      createdAt: now,
-      updatedAt: now,
+  const openDailyJournal = useCallback(
+    (forceBypassLock = false) => {
+      const currentWs = latestWorkspaceRef.current;
+      const journalFolder =
+        currentWs.folders.find((f) => f.name.toLowerCase() === 'journal') ?? folders[0];
+      if (!journalFolder) return;
+
+      const sessionUnlocked = (() => {
+        try {
+          const saved = sessionStorage.getItem('inknote-unlocked-folders');
+          return saved ? JSON.parse(saved) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      // If journal folder is private and locked, switch to it and trigger unlock
+      const isLocked =
+        !forceBypassLock &&
+        journalFolder.private &&
+        !unlockedFolderIds.includes(journalFolder.id) &&
+        !sessionUnlocked.includes(journalFolder.id);
+
+      if (isLocked) {
+        setActiveFolderId(journalFolder.id);
+        window.dispatchEvent(
+          new CustomEvent('inknote-request-unlock', {
+            detail: { folderId: journalFolder.id, thenOpenJournal: true },
+          })
+        );
+        return;
+      }
+
+      const today = dateKey();
+      const existing = currentWs.notes.find((n) => n.journalDate === today);
+      if (existing) {
+        setSelectedNoteId(existing.id);
+        setActiveFolderId(existing.folderId);
+        return;
+      }
+      const now = new Date().toISOString();
+      const note: NoteItem = {
+        id: makeId('journal'),
+        folderId: journalFolder.id,
+        title: `Journal · ${formatDate(now)}`,
+        content: `# ${formatDate(now)}\n\nWhat is on your mind today?`,
+        tags: ['journal'],
+        journalDate: today,
+        createdAt: now,
+        updatedAt: now,
+      };
+      commitWorkspace({ ...currentWs, notes: [note, ...currentWs.notes] });
+      setActiveFolderId(journalFolder.id);
+      setSelectedNoteId(note.id);
+    },
+    [commitWorkspace, folders, unlockedFolderIds]
+  );
+
+  // Handle auto-open of today's journal note after successful unlock
+  useEffect(() => {
+    const handleJournalUnlocked = () => {
+      openDailyJournal(true);
     };
-    commitWorkspace({ ...workspace, notes: [note, ...workspace.notes] });
-    setActiveFolderId(journalFolder.id);
-    setSelectedNoteId(note.id);
-  }, [commitWorkspace, folders, workspace]);
+    window.addEventListener('inknote-journal-unlocked', handleJournalUnlocked);
+    return () => window.removeEventListener('inknote-journal-unlocked', handleJournalUnlocked);
+  }, [openDailyJournal]);
 
   const exportNote = useCallback((note: NoteItem) => {
     downloadFile(
@@ -574,12 +850,21 @@ export function useInknoteWorkspace(
   }, []);
 
   const exportWorkspace = useCallback(() => {
+    const lockedPrivateFolderIds = new Set(
+      workspace.folders
+        .filter((f) => f.private && !unlockedFolderIds.includes(f.id))
+        .map((f) => f.id)
+    );
+    // Exclude notes in locked private folders from backup exports
+    const sanitizedNotes = workspace.notes.filter(
+      (n) => !lockedPrivateFolderIds.has(n.folderId)
+    );
     downloadFile(
       'inknote-backup.json',
-      JSON.stringify(workspace, null, 2),
+      JSON.stringify({ ...workspace, notes: sanitizedNotes }, null, 2),
       'application/json;charset=utf-8'
     );
-  }, [workspace]);
+  }, [workspace, unlockedFolderIds]);
 
   const importWorkspaceFile = useCallback(
     (file: File) => {
@@ -730,6 +1015,9 @@ export function useInknoteWorkspace(
     draggedNoteId,
     setDraggedNoteId,
     createFolder,
+    updateFolder,
+    renameFolder,
+    moveFolderToParent,
     togglePinFolder,
     moveFolder,
     reorderFolder,

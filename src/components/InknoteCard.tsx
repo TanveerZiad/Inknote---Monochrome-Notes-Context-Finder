@@ -464,9 +464,18 @@ const InknoteCardComponent: React.FC<InknoteCardProps> = ({
             </button>
             <button
               className="dropdown-item"
-              onClick={() => {
-                editorRef.current?.applyFormat('print');
+              onClick={async () => {
                 setIsMenuOpen(false);
+                try {
+                  const { printNote } = await import('../exporters/pdf');
+                  await printNote({
+                    title: note.title,
+                    content: note.content,
+                    locked: note.locked,
+                  });
+                } catch (e) {
+                  console.error('[Inknote] Print failed:', e);
+                }
               }}
             >
               <Printer size={14} />
